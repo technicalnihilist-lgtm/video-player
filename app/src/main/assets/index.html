@@ -88,7 +88,7 @@ input[type=range]:active::-webkit-slider-thumb{transform:scale(1.4)}
 /* player */
 #pl{position:fixed;inset:0;z-index:10;background:#000;color:#fff;opacity:0;visibility:hidden;transform:scale(.88) translateY(60px);border-radius:36px;overflow:hidden;transition:transform .7s var(--sp),opacity .35s,visibility 0s .7s}
 #pl.on{opacity:1;visibility:visible;transform:none;border-radius:0;transition:transform .7s var(--sp),opacity .35s,visibility 0s}
-#v{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#000;z-index:0}#pl.fill #v{object-fit:fill}#pl #v.por{object-fit:contain}
+#v{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#000;z-index:0}/* "Stretch to fill" only ever applies while the device is in landscape: on a portrait screen a landscape video is letterboxed instead of being stretched into a tall frame. */@media(orientation:landscape){#pl.fill #v{object-fit:fill}}#pl #v.por{object-fit:contain}
 #rot{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) scale(.8);z-index:4;padding:22px 26px;border-radius:30px;text-align:center;font-weight:700;max-width:80%;opacity:0;pointer-events:none;transition:transform .55s var(--sp),opacity .3s}
 #rot.on{opacity:1;transform:translate(-50%,-50%) scale(1)}
 #rot small{display:block;margin-top:4px;color:rgba(255,255,255,.75);font-weight:500}
@@ -138,7 +138,7 @@ input[type=range]:active::-webkit-slider-thumb{transform:scale(1.4)}
    <label class="set"><span>Tap sounds</span><span class="sw"><input type="checkbox" id="sSnd" checked><i></i></span></label>
    <label class="set"><span>Haptic feedback<small>Vibrates on tap when supported</small></span><span class="sw"><input type="checkbox" id="sVib" checked><i></i></span></label>
    <label class="set"><span>Play next automatically</span><span class="sw"><input type="checkbox" id="sNx" checked><i></i></span></label>
-   <label class="set"><span>Stretch to fill screen<small>Landscape videos fill the screen with no black bars. Portrait videos are never stretched.</small></span><span class="sw"><input type="checkbox" id="sFill" checked><i></i></span></label>
+   <label class="set"><span>Stretch to fill screen<small>Landscape videos fill the screen with no black bars when your phone is sideways. In portrait, videos keep their shape. Portrait videos are never stretched.</small></span><span class="sw"><input type="checkbox" id="sFill" checked><i></i></span></label>
   </div>
   <div class="grp gl" style="--i:1">
    <div class="set"><span>Glass transparency</span><input class="sl" type="range" id="sG" min="4" max="45" value="18"></div>
