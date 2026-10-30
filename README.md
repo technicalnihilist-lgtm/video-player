@@ -1,3 +1,5 @@
+<p align="center"><img src="docs/icon.png" width="120" alt="Video Player icon"></p>
+
 # Video Player
 
 A glassmorphism video player for Android. Same UI as **Glass Player**, packaged as an installable APK.
