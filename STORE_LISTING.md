@@ -46,7 +46,7 @@ No ads, no trackers, no network access, no account. 111 KB.
 | Package name | `com.glassplayer.app` |
 | Release keyword | leave **Auto** on — every release contains exactly one APK, `Video-Player.apk` |
 
-The latest release ([v1.0.1](https://github.com/technicalnihilist-lgtm/video-player/releases/latest)) attaches `Video-Player.apk`, so auto-pick works as-is. If you ever prefer an explicit keyword, use `Video-Player`.
+The latest release ([v1.0.2](https://github.com/technicalnihilist-lgtm/video-player/releases/latest)) attaches `Video-Player.apk`, so auto-pick works as-is. If you ever prefer an explicit keyword, use `Video-Player`.
 
 ## 5. Screenshots — direct image links
 
@@ -66,5 +66,5 @@ Order above is the suggested store order: library, player, settings, light theme
 ## Notes before you submit
 
 - The APK is **debug-signed**. It installs fine and updates over itself, but some stores reject debug signatures and Google Play will not accept it. For a proper release signature, add a keystore to the repo as Actions secrets and switch `app/build.gradle` to a `signingConfigs.release` block.
-- `minSdk 23` (Android 6.0+), `targetSdk 34`, `versionCode 2`, `versionName 1.0.1`.
+- `minSdk 23` (Android 6.0+), `targetSdk 34`, `versionCode 3`, `versionName 1.0.2`.
 - No `INTERNET` permission is requested, so the store's privacy section can state "no data collected, no network access".
