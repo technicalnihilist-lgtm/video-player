@@ -15,13 +15,11 @@ Everything runs on-device and fully offline: the app declares no `INTERNET` perm
 
 ## Download
 
-The APK is built automatically by GitHub Actions on every push to `main`.
+**[Download Video-Player.apk](https://github.com/technicalnihilist-lgtm/video-player/releases/latest/download/Video-Player.apk)** from the latest release, open it on your phone and allow "install unknown apps" when prompted.
 
-1. Open the [Actions](../../actions/workflows/build-apk.yml) tab and pick the latest **Build APK** run.
-2. Download the **Video-Player-apk** artifact and unzip it.
-3. Install `Video-Player-debug.apk` on your phone (allow "install unknown apps" for your browser or file manager).
+Prefer to build from source? Every push to `main` also produces a fresh APK in the [Actions](../../actions/workflows/build-apk.yml) tab as the **Video-Player-apk** artifact.
 
-The debug APK is signed with the standard Android debug key, which is fine for personal use and side-loading, but is not suitable for publishing on Google Play.
+The APK is debug-signed, which is fine for personal use and side-loading, but is not suitable for publishing on Google Play.
 
 ## Features
 
