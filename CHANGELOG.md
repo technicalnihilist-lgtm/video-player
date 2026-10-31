@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.0.4
+
+- **Depth, tilt and parallax are now adjustable separately.** Settings has three independent sliders instead of one:
+  - **Depth strength** — shadow depth under every panel
+  - **Tilt angle** — how far a card leans toward your finger and the phone
+  - **Parallax** — how much the thumbnail, title and highlight separate from each other
+- All three save between sessions, so a look you dial in stays.
+- Slider rows no longer squeeze when the label runs to two lines.
+
 ## 1.0.3
 
 - **Added: depth effect.** Panels now sit on layered depth — a contact shadow, a wide ambient shadow and a lit glass edge — so they read as solid glass slabs instead of flat sheets. Cards lift off the page and swing up out of the screen as they appear.

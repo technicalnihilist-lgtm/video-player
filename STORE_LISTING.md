@@ -34,7 +34,7 @@ Pick videos straight from storage and they appear as cards with an auto-generate
 
 Framing is handled properly. A landscape video fills the screen with no black bars while your phone is sideways, and is letterboxed at its true shape when you hold it upright — never stretched. Portrait videos are never stretched either, and a rotate hint appears if one is played in landscape. Playback position is remembered per video and the next video plays automatically.
 
-The interface is real glass with real depth: panels sit on layered shadows with a lit glass edge, cards lift off the page and lean toward your finger, and a specular highlight tracks the light across the surface as you move the phone. An animated gradient backdrop runs behind live blur, and you can tune transparency, blur strength, depth strength or switch the depth and 4D tilt effects off entirely. Tap sounds, haptics, autoplay-next and Auto/Light/Dark theme all persist between sessions, and deleting a video gives you an Undo toast. The Android back button closes the player, then the speed sheet, then the app.
+The interface is real glass with real depth: panels sit on layered shadows with a lit glass edge, cards lift off the page and lean toward your finger, and a specular highlight tracks the light across the surface as you move the phone. An animated gradient backdrop runs behind live blur, and you can tune transparency, blur strength, shadow depth, tilt angle and parallax independently, or switch the depth and 4D tilt effects off entirely. Tap sounds, haptics, autoplay-next and Auto/Light/Dark theme all persist between sessions, and deleting a video gives you an Undo toast. The Android back button closes the player, then the speed sheet, then the app.
 
 No ads, no trackers, no network access, no account. 111 KB.
 ```
@@ -66,5 +66,5 @@ Order above is the suggested store order: library, player, settings, light theme
 ## Notes before you submit
 
 - The APK is **debug-signed**. It installs fine and updates over itself, but some stores reject debug signatures and Google Play will not accept it. For a proper release signature, add a keystore to the repo as Actions secrets and switch `app/build.gradle` to a `signingConfigs.release` block.
-- `minSdk 23` (Android 6.0+), `targetSdk 34`, `versionCode 4`, `versionName 1.0.3`.
+- `minSdk 23` (Android 6.0+), `targetSdk 34`, `versionCode 5`, `versionName 1.0.4`.
 - No `INTERNET` permission is requested, so the store's privacy section can state "no data collected, no network access".

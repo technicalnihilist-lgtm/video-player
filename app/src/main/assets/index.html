@@ -69,6 +69,8 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:22px;heigh
 input[type=range]::-moz-range-thumb{width:22px;height:22px;border:0;border-radius:50%;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.4)}
 input[type=range]:active::-webkit-slider-thumb{transform:scale(1.4)}
 .sl{width:46%}
+.set>span:first-child{flex:1 1 auto;min-width:0}
+.set .sl{flex:0 0 44%;width:44%;min-width:104px}
 /* tab bar */
 #tabs{position:fixed;left:0;right:0;margin:0 auto;bottom:calc(14px + env(safe-area-inset-bottom,0px));z-index:5;display:flex;padding:5px;border-radius:34px;width:min(300px,86vw);animation:pop .9s .4s var(--sp) both}
 #tabs .ind{position:absolute;top:5px;bottom:5px;left:5px;width:calc(50% - 5px);border-radius:30px;background:rgba(255,255,255,.28);box-shadow:inset 0 1px 0 var(--hl);transition:transform .6s var(--sp)}
@@ -123,7 +125,7 @@ input[type=range]:active::-webkit-slider-thumb{transform:scale(1.4)}
 @keyframes vb{0%{transform:scale(1.16);opacity:.3}100%{transform:none;opacity:1}}
 #pl.on #v{animation:vb .9s var(--sp)}
 /* ===== depth & 4D ===== */
-:root{--dzk:.6;--sh:0;--gx:0;--gy:0}
+:root{--dzk:.6;--sh:0;--gx:0;--gy:0;--park:1;--tiltk:1}
 /* layered depth: contact shadow, ambient shadow and a lit glass edge */
 :root[data-depth="on"] .gl{box-shadow:inset 0 1px 0 rgba(255,255,255,.62),inset 0 -1px 0 rgba(255,255,255,.16),inset 0 -20px 28px -22px rgba(255,255,255,.5),0 1px 2px rgba(0,0,0,.32),0 calc(7px*var(--dzk)) calc(18px*var(--dzk)) -6px rgba(0,0,0,.44),0 calc(24px*var(--dzk)) calc(52px*var(--dzk)) -18px rgba(0,0,0,.6)}
 /* specular sheen: follows the finger, and drifts with the phone's motion */
@@ -132,11 +134,11 @@ input[type=range]:active::-webkit-slider-thumb{transform:scale(1.4)}
 /* 4D card lift + inner parallax layers */
 :root[data-depth="on"] .grid{perspective:1000px}
 :root[data-depth="on"] .card{transform:rotateX(var(--prx,0deg)) rotateY(var(--pry,0deg));transition:transform .45s var(--sp),box-shadow .4s,opacity .3s}
-:root[data-depth="on"][data-tilt="on"] .card{transform:rotateX(calc(var(--prx,0deg) + var(--gy,0)*-4deg)) rotateY(calc(var(--pry,0deg) + var(--gx,0)*4deg))}
-:root[data-depth="on"] .card .th{transform:translate(calc(var(--px,0px)*-.5),calc(var(--py,0px)*-.5)) scale(1.05)}
-:root[data-depth="on"] .card b,:root[data-depth="on"] .card small{transform:translate(calc(var(--px,0px)*-.16),calc(var(--py,0px)*-.16))}
-:root[data-depth="on"] .card .pp{transform:translate(calc(var(--px,0px)*-.85),calc(var(--py,0px)*-.85))}
-:root[data-depth="on"] .card:active{transform:rotateX(calc(var(--prx,0deg) + var(--gy,0)*-4deg)) rotateY(calc(var(--pry,0deg) + var(--gx,0)*4deg)) scale(.965)}
+:root[data-depth="on"][data-tilt="on"] .card{transform:rotateX(calc(var(--prx,0deg) + var(--gy,0)*-4deg*var(--tiltk))) rotateY(calc(var(--pry,0deg) + var(--gx,0)*4deg*var(--tiltk)))}
+:root[data-depth="on"] .card .th{transform:translate(calc(var(--px,0px)*-.5*var(--park)),calc(var(--py,0px)*-.5*var(--park))) scale(1.05)}
+:root[data-depth="on"] .card b,:root[data-depth="on"] .card small{transform:translate(calc(var(--px,0px)*-.16*var(--park)),calc(var(--py,0px)*-.16*var(--park)))}
+:root[data-depth="on"] .card .pp{transform:translate(calc(var(--px,0px)*-.85*var(--park)),calc(var(--py,0px)*-.85*var(--park)))}
+:root[data-depth="on"] .card:active{transform:rotateX(calc(var(--prx,0deg) + var(--gy,0)*-4deg*var(--tiltk))) rotateY(calc(var(--pry,0deg) + var(--gx,0)*4deg*var(--tiltk))) scale(.965)}
 /* cards swing up out of the screen on entry */
 @keyframes pop4d{0%{transform:perspective(1000px) rotateX(18deg) translateY(26px) scale(.9);opacity:0}60%{opacity:1}100%{transform:perspective(1000px) rotateX(0deg) translateY(0) scale(1);opacity:1}}
 :root[data-depth="on"] .card:not(.bo):not(.rm){animation-name:pop4d}
@@ -171,7 +173,9 @@ input[type=range]:active::-webkit-slider-thumb{transform:scale(1.4)}
   <div class="grp gl" style="--i:2">
    <label class="set"><span>Depth effect<small>Layered shadows, a lit glass edge and cards that lift off the page</small></span><span class="sw"><input type="checkbox" id="sDep" checked><i></i></span></label>
    <label class="set"><span>4D tilt<small>Cards lean toward your finger and follow the way you hold the phone</small></span><span class="sw"><input type="checkbox" id="sTilt" checked><i></i></span></label>
-   <div class="set"><span>Depth strength</span><input class="sl" type="range" id="sDz" min="0" max="100" value="60"></div>
+   <div class="set"><span>Depth strength<small>Shadow depth under every panel</small></span><input class="sl" type="range" id="sDz" min="0" max="100" value="60"></div>
+   <div class="set"><span>Tilt angle<small>How far a card leans as you move</small></span><input class="sl" type="range" id="sTa" min="0" max="100" value="60"></div>
+   <div class="set"><span>Parallax<small>Depth between thumbnail, title and highlight</small></span><input class="sl" type="range" id="sPar" min="0" max="100" value="50"></div>
   </div>
   <div class="grp gl" style="--i:3"><div class="set"><span>Gestures<small>Double-tap left or right to skip 10 seconds. Hold to play at 2×.</small></span></div></div>
  </section>
@@ -196,7 +200,7 @@ const IC={lib:'<rect x="3" y="4" width="18" height="16" rx="4"/><path d="M10 9l5
 const svg=n=>'<svg viewBox="0 0 24 24">'+IC[n]+'</svg>';
 function icons(r=document){r.querySelectorAll('[data-ic]').forEach(e=>e.innerHTML=svg(e.dataset.ic))}
 icons();
-const S={snd:true,vib:true,nx:true,fill:true,dep:true,tilt:true,dz:60,items:[],cur:-1};
+const S={snd:true,vib:true,nx:true,fill:true,dep:true,tilt:true,dz:60,ta:60,par:50,items:[],cur:-1};
 let AC;
 function tick(f=880,d=.07,v=.13){if(S.vib&&navigator.vibrate)try{navigator.vibrate(8)}catch(e){}if(!S.snd)return;try{AC=AC||new(window.AudioContext||window.webkitAudioContext)();if(AC.state==='suspended')AC.resume();const o=AC.createOscillator(),g=AC.createGain(),t=AC.currentTime;o.type='sine';o.frequency.setValueAtTime(f,t);o.frequency.exponentialRampToValueAtTime(f*.62,t+d);g.gain.setValueAtTime(v,t);g.gain.exponentialRampToValueAtTime(.001,t+d);o.connect(g);g.connect(AC.destination);o.start(t);o.stop(t+d+.01)}catch(e){}}
 addEventListener('pointerdown',e=>{const t=e.target.closest('button,.card,.tab,.sw,.o,#scrim');if(t)tick(t.classList.contains('card')||t.id==='pp'?1040:880)},true);
@@ -254,24 +258,26 @@ tz.onpointerup=e=>{rel();if(held)return;const now=Date.now(),w=innerWidth,x=e.cl
 addEventListener('keydown',e=>{if(!pl.classList.contains('on'))return;if(e.key===' '){e.preventDefault();tp()}if(e.key==='ArrowRight')skip(10);if(e.key==='ArrowLeft')skip(-10);if(e.key==='Escape')history.back();showC()});
 /* settings */
 const R=document.documentElement;
-function save(){try{localStorage.setItem('gp',JSON.stringify({snd:S.snd,vib:S.vib,nx:S.nx,fill:S.fill,dep:S.dep,tilt:S.tilt,dz:S.dz,g:$('#sG').value,b:$('#sB').value,t:R.dataset.theme||'auto'}))}catch(e){}}
+function save(){try{localStorage.setItem('gp',JSON.stringify({snd:S.snd,vib:S.vib,nx:S.nx,fill:S.fill,dep:S.dep,tilt:S.tilt,dz:S.dz,ta:S.ta,par:S.par,g:$('#sG').value,b:$('#sB').value,t:R.dataset.theme||'auto'}))}catch(e){}}
 function apply(){R.style.setProperty('--g',$('#sG').value/100);R.style.setProperty('--bl',$('#sB').value+'px');rng($('#sG'));rng($('#sB'))}
 $('#sSnd').onchange=e=>{S.snd=e.target.checked;save();tick()};$('#sVib').onchange=e=>{S.vib=e.target.checked;save()};$('#sNx').onchange=e=>{S.nx=e.target.checked;save()};$('#sFill').onchange=e=>{S.fill=e.target.checked;pl.classList.toggle('fill',S.fill);save();toast(S.fill?'Stretched to fill the screen':'Original shape')};
 $('#sG').oninput=()=>{apply();save()};$('#sB').oninput=()=>{apply();save()};
 function theme(v){if(v==='auto')delete R.dataset.theme;else R.dataset.theme=v;$$('#seg button').forEach(b=>b.classList.toggle('on',b.dataset.v===v));save()}
 $$('#seg button').forEach(b=>b.onclick=()=>theme(b.dataset.v));
-try{const c=JSON.parse(localStorage.getItem('gp')||'null');if(c){S.snd=c.snd;S.vib=c.vib;S.nx=c.nx;S.fill=c.fill!==false;pl.classList.toggle('fill',S.fill);$('#sFill').checked=S.fill;$('#sSnd').checked=S.snd;$('#sVib').checked=S.vib;$('#sNx').checked=S.nx;$('#sG').value=c.g;$('#sB').value=c.b;S.dep=c.dep!==false;S.tilt=c.tilt!==false;S.dz=c.dz==null?60:+c.dz;$('#sDep').checked=S.dep;$('#sTilt').checked=S.tilt;$('#sDz').value=S.dz;theme(c.t||'auto')}}catch(e){}
+try{const c=JSON.parse(localStorage.getItem('gp')||'null');if(c){S.snd=c.snd;S.vib=c.vib;S.nx=c.nx;S.fill=c.fill!==false;pl.classList.toggle('fill',S.fill);$('#sFill').checked=S.fill;$('#sSnd').checked=S.snd;$('#sVib').checked=S.vib;$('#sNx').checked=S.nx;$('#sG').value=c.g;$('#sB').value=c.b;S.dep=c.dep!==false;S.tilt=c.tilt!==false;S.dz=c.dz==null?60:+c.dz;S.ta=c.ta==null?60:+c.ta;S.par=c.par==null?50:+c.par;$('#sDep').checked=S.dep;$('#sTilt').checked=S.tilt;$('#sDz').value=S.dz;$('#sTa').value=S.ta;$('#sPar').value=S.par;theme(c.t||'auto')}}catch(e){}
 function fixDur(v,cb){if(v.duration!==Infinity){cb();return}v.addEventListener('timeupdate',function f(){v.removeEventListener('timeupdate',f);v.currentTime=0;cb()});v.currentTime=1e101}
 let lastDel;
 function delItem(it,c){c.classList.remove('bo');c.classList.add('rm');tick(520,.14,.15);setTimeout(()=>{const idx=S.items.indexOf(it);if(idx<0)return;S.items.splice(idx,1);S.cur=-1;render();lastDel={it,idx};toast('Deleted “'+it.name+'”','Undo',()=>{if(!lastDel)return;S.items.splice(Math.min(lastDel.idx,S.items.length),0,lastDel.it);lastDel=null;render();tick(1100)})},520)}
 /* ===== depth & 4D engine ===== */
 let gx=0,gy=0,gOn=false,gT=0,lastC=null;
 function setDz(){R.style.setProperty('--dzk',(S.dz/100*1.2+.12).toFixed(2))}
+function setTiltK(){R.style.setProperty('--tiltk',(S.ta/60).toFixed(2))}
+function setPar(){R.style.setProperty('--park',(S.par/50).toFixed(2))}
 function clearTilt(c){c=c||lastC;if(!c)return;['--prx','--pry','--px','--py','--mx','--my'].forEach(v=>c.style.removeProperty(v))}
 function tilt(c,e){const r=c.getBoundingClientRect();if(!r.width||!r.height)return;
  const px=Math.max(-.5,Math.min(.5,(e.clientX-r.left)/r.width-.5));
  const py=Math.max(-.5,Math.min(.5,(e.clientY-r.top)/r.height-.5));
- const amp=10*(S.dz/100+.3);
+ const amp=12*(S.ta/100);
  c.style.setProperty('--pry',(px*amp).toFixed(2)+'deg');
  c.style.setProperty('--prx',(-py*amp).toFixed(2)+'deg');
  c.style.setProperty('--px',(px*r.width*.5).toFixed(1)+'px');
@@ -286,7 +292,7 @@ function startGyro(){if(gOn)return;gOn=true;try{addEventListener('deviceorientat
 function stopGyro(){if(!gOn)return;gOn=false;try{removeEventListener('deviceorientation',onGyro)}catch(e){}
  R.style.setProperty('--gx','0');R.style.setProperty('--gy','0')}
 function depthApply(){R.dataset.depth=S.dep?'on':'off';R.dataset.tilt=S.tilt?'on':'off';
- setDz();rng($('#sDz'));
+ setDz();setTiltK();setPar();rng($('#sDz'));rng($('#sTa'));rng($('#sPar'));
  if(S.tilt)startGyro();else{clearTilt();stopGyro()}}
 addEventListener('pointermove',e=>{if(!S.tilt)return;
  const c=e.target&&e.target.closest?e.target.closest('.card'):null;
@@ -298,6 +304,8 @@ addEventListener('pointerdown',e=>{if(!S.tilt)return;
 $('#sDep').onchange=e=>{S.dep=e.target.checked;save();depthApply();toast(S.dep?'Depth effect on':'Depth effect off')};
 $('#sTilt').onchange=e=>{S.tilt=e.target.checked;save();depthApply();toast(S.tilt?'4D tilt on':'4D tilt off')};
 $('#sDz').oninput=()=>{S.dz=+$('#sDz').value;setDz();rng($('#sDz'));save()};
+$('#sTa').oninput=()=>{S.ta=+$('#sTa').value;setTiltK();rng($('#sTa'));save()};
+$('#sPar').oninput=()=>{S.par=+$('#sPar').value;setPar();rng($('#sPar'));save()};
 depthApply();
 apply();render();
 </script></body></html>
