@@ -30,13 +30,15 @@ The APK is debug-signed, which is fine for personal use and side-loading, but is
 
 ## Features
 
+- **Depth effect** — layered shadows, a lit glass edge and cards that lift off the page, so panels read as solid glass rather than flat sheets
+- **4D tilt** — cards lean toward your finger and follow the way you hold the phone, with parallax between the thumbnail, the title and a specular highlight that tracks the light; the backdrop shifts against the content as you move
 - **Real glass UI** — animated gradient backdrop with live `backdrop-filter` blur, adjustable transparency and blur strength
 - **Your own library** — pick one or many videos from device storage; each card gets an auto-generated thumbnail and duration
 - **Full gesture player** — tap to toggle controls, double-tap left/right to skip 10 s, hold for 2× speed with a ripple
 - **Playback control** — scrubber, ±10 s, loop, mute, speed (0.5×–2×), picture-in-picture and native fullscreen
 - **Smart framing** — a landscape video fills the screen with no black bars only while your phone is sideways; in portrait it is letterboxed at its true shape instead of being stretched into a tall frame. Portrait video is never stretched either, and a rotate hint appears if one is played in landscape
 - **Remembers where you were** — playback position is restored per video; the next video plays automatically
-- **Settings that stick** — tap sounds, haptics, autoplay-next, glass transparency, glass blur, Auto/Light/Dark theme, all saved in local storage
+- **Settings that stick** — depth effect, 4D tilt, depth strength, tap sounds, haptics, autoplay-next, glass transparency, glass blur, Auto/Light/Dark theme, all saved in local storage
 - **Undo delete** — removing a video shows an Undo toast
 - **Android back button works** — it closes the player, then the sheet, then the app
 
