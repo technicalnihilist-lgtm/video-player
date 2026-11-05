@@ -7,16 +7,16 @@ Tick items as they are done and append to the progress log at the bottom.
 
 ## Day 1 · 2026-11-01 · Memory & leaks
 
-- [ ] Revoke object URLs (`URL.revokeObjectURL`) for a video's blob when it is deleted, and when the app tears down.
-- [ ] Free the temporary `<video>` element used for thumbnail generation: clear `src`, drop listeners, `load()` to release the decoder.
-- [ ] Register `navigator.mediaSession` metadata/action handlers once, not on every player open (duplicate listeners accumulate today).
-- [ ] Clear the player's `src` and `load()` on close so the decoder and buffers are released between videos.
-- [ ] Guard `openP()` against a missing/undefined item url instead of throwing.
-- [ ] Make sure the undo-delete path cannot reinsert a stale item after the toast expires.
-- [ ] Remove ripple `<span>` nodes reliably even if the player closes mid-animation.
-- [ ] Stop the toast action button from lingering in the DOM after the toast hides.
-- [ ] Release the wake lock on any player error path, not only on a clean close.
-- [ ] Stress check: add and delete 20 videos, then confirm no detached nodes / listeners keep growing.
+- [x] Revoke object URLs (`URL.revokeObjectURL`) for a video's blob when it is deleted, and when the app tears down.
+- [x] Free the temporary `<video>` element used for thumbnail generation: clear `src`, drop listeners, `load()` to release the decoder.
+- [x] Register `navigator.mediaSession` metadata/action handlers once, not on every player open (duplicate listeners accumulate today).
+- [x] Clear the player's `src` and `load()` on close so the decoder and buffers are released between videos.
+- [x] Guard `openP()` against a missing/undefined item url instead of throwing.
+- [x] Make sure the undo-delete path cannot reinsert a stale item after the toast expires.
+- [x] Remove ripple `<span>` nodes reliably even if the player closes mid-animation.
+- [x] Stop the toast action button from lingering in the DOM after the toast hides.
+- [x] Release the wake lock on any player error path, not only on a clean close.
+- [x] Stress check: add and delete 20 videos, then confirm no detached nodes / listeners keep growing.
 
 ## Day 2 · 2026-11-02 · Playback correctness
 
@@ -269,7 +269,7 @@ Tick items as they are done and append to the progress log at the bottom.
 
 | Day | Date | Version | Items done | Notes |
 | --- | --- | --- | --- | --- |
-| 1 | 2026-11-01 | — | 0/10 | Memory & leaks |
+| 1 | 2026-11-01 | 1.0.5 | 10/10 | Memory & leaks — executed 2026-11-05. 20 add/20 delete stress: 20/20 blob URLs revoked, nodes 382 → 162, 0 window listeners added over 5 open/close cycles. No item skipped. |
 | 2 | 2026-11-02 | — | 0/10 | Playback correctness |
 | 3 | 2026-11-03 | — | 0/10 | Input responsiveness |
 | 4 | 2026-11-04 | — | 0/10 | Settings & persistence |

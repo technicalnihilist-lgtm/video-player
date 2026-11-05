@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.0.5
+
+Maintenance release: nothing looks any different, but the app now lets go of memory properly.
+
+- **Deleted videos are released.** Removing a video from the library frees the memory it was holding instead of keeping it until the app closes. Undo still works — the file is only freed once the undo toast has gone, and everything is freed when the app shuts down.
+- **The player frees its decoder when you close a video**, so opening one video after another no longer piles up decoders and buffers in the background.
+- **The thumbnail step cleans up after itself.** It no longer leaves a hidden video element (and its decoder) alive once the duration and thumbnail are in — or after its 4-second timeout.
+- **Fixed:** the system media controls were being registered again for every video you opened. They are now registered once.
+- **Fixed:** the undo button and the tap-ripple markers no longer stay behind in the page after the toast has faded, or when the player is closed mid-animation.
+- **Fixed:** the screen wake lock is handed back if a video fails to load, not only when you close the player normally.
+- **Fixed:** opening a video whose file is no longer available no longer throws an error; it simply does nothing.
+- **Fixed:** deleting a second video no longer keeps the first deleted one's memory alive, and undo can no longer bring back a video whose file has already been released.
+- **Nothing visible changed** — colours, spacing, layout, blur, shadows, animation timing, wording and icons are untouched; the stylesheet and markup are byte-identical to 1.0.4.
+- Added `tools/stress-memory.mjs`: a headless check that adds and deletes 20 videos and asserts that no nodes, listeners or blob URLs are left behind.
+
 ## 1.0.4
 
 - **Depth, tilt and parallax are now adjustable separately.** Settings has three independent sliders instead of one:
