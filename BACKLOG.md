@@ -20,16 +20,16 @@ Tick items as they are done and append to the progress log at the bottom.
 
 ## Day 2 · 2026-11-02 · Playback correctness
 
-- [ ] Seek bar resolution: `max=1000` quantises to ~7 s per step on a 2-hour video — raise the step resolution.
-- [ ] Handle the video `error` event (unsupported codec / unreadable file) with a clear message instead of a black screen.
-- [ ] Wrap the `currentTime = 1e101` duration probe in try/catch for engines that throw.
-- [ ] Guard against NaN/Infinity duration everywhere duration is formatted or compared.
-- [ ] Fix `onended` when auto-next is on but the next item has no usable url.
-- [ ] Check loop + ended interaction: a looping video must not trigger auto-next.
-- [ ] Clamp `playbackRate` back to 1 (or the last valid value) when opening a new video.
-- [ ] Do not restore a saved position when the duration is still unknown or the saved value is past the end.
-- [ ] Bound `skip()` when duration is unknown or 0.
-- [ ] After playback ends, controls must stay visible and the play button must show the right icon.
+- [x] Seek bar resolution: `max=1000` quantises to ~7 s per step on a 2-hour video — raise the step resolution.
+- [x] Handle the video `error` event (unsupported codec / unreadable file) with a clear message instead of a black screen.
+- [x] Wrap the `currentTime = 1e101` duration probe in try/catch for engines that throw.
+- [x] Guard against NaN/Infinity duration everywhere duration is formatted or compared.
+- [x] Fix `onended` when auto-next is on but the next item has no usable url.
+- [x] Check loop + ended interaction: a looping video must not trigger auto-next.
+- [x] Clamp `playbackRate` back to 1 (or the last valid value) when opening a new video.
+- [x] Do not restore a saved position when the duration is still unknown or the saved value is past the end.
+- [x] Bound `skip()` when duration is unknown or 0.
+- [x] After playback ends, controls must stay visible and the play button must show the right icon.
 
 ## Day 3 · 2026-11-03 · Input responsiveness
 
@@ -270,7 +270,7 @@ Tick items as they are done and append to the progress log at the bottom.
 | Day | Date | Version | Items done | Notes |
 | --- | --- | --- | --- | --- |
 | 1 | 2026-11-01 | 1.0.5 | 10/10 | Memory & leaks — executed 2026-11-05. 20 add/20 delete stress: 20/20 blob URLs revoked, nodes 382 → 162, 0 window listeners added over 5 open/close cycles. No item skipped. |
-| 2 | 2026-11-02 | — | 0/10 | Playback correctness |
+| 2 | 2026-11-02 | 1.0.6 | 10/10 | Playback correctness — executed 2026-11-06. Seek bar 1000 → 10000 steps (7.2 s → 0.72 s per step on a 2 h video); decoder errors now say so via the existing toast and keep the controls up; the `1e101` duration probe is guarded, settles once and has a 2 s backstop; one `dur()` guard for every duration read; auto-next respects loop and skips items with no file; rate reset on open and on close; position restored only when the duration is known and the position is inside the file; skip/scrub bounded; ended leaves the controls up with the right icon. Item 7 was half-done already (openP reset the rate) — the close path now resets it too. Headless jsdom check: 7 of these invariants fail on 1.0.5, all pass on 1.0.6; `tools/stress-memory.mjs` still clean (20/20 revoked, 0 listener growth). No item skipped, no visual change. |
 | 3 | 2026-11-03 | — | 0/10 | Input responsiveness |
 | 4 | 2026-11-04 | — | 0/10 | Settings & persistence |
 | 5 | 2026-11-05 | — | 0/10 | Rendering & DOM |

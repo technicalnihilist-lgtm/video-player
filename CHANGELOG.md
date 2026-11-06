@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.0.6
+
+Maintenance release: the picture is unchanged, but playback is now correct at the edges.
+
+- **Seeking is precise.** The seek bar used to move in steps of about 7 seconds on a two-hour video; it now resolves to under a second, so a tap lands where you aimed.
+- **A video that cannot be played says so.** An unsupported codec or a file that is no longer readable used to leave a black screen with no explanation; it now shows a short message and puts the controls back on screen.
+- **A looping video no longer jumps to the next one** when it reaches the end.
+- **Play next skips items whose file is gone** instead of opening a player with nothing in it, and when the queue is finished the controls stay up with the play button showing correctly.
+- **Fixed:** the duration probe (the trick some engines need before they report a real length) could throw on engines that clamp the seek, and its listener was never removed. It is guarded now, settles exactly once, and gives up after two seconds.
+- **Fixed:** an unknown or infinite duration could show `NaN` on the clock or make the seek bar and the 10-second skip buttons misbehave. Every duration read is now validated.
+- **Fixed:** a saved position is only restored once the length is known and the position is inside the file, so a video can no longer open near its end or before its first frame.
+- **Fixed:** the clock and the seek bar no longer show the previous video's time for a moment when you open a new one.
+- **Fixed:** a 2× hold that was still running when the player closed could leave the next video playing at double speed.
+- **Fixed:** the thumbnail step no longer tries to draw a frame from a video that never decoded.
+- **Nothing visible changed** — the stylesheet is byte-identical to 1.0.5; the only markup change is the seek bar's internal step resolution, which does not alter how it looks.
+
 ## 1.0.5
 
 Maintenance release: nothing looks any different, but the app now lets go of memory properly.

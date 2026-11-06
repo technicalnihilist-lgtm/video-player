@@ -190,7 +190,7 @@ input[type=range]:active::-webkit-slider-thumb{transform:scale(1.4)}
  <div id="top" class="cc gl"><button class="ib b" id="bk" data-ic="back" aria-label="Back"></button><div id="ttl"></div><button class="ib b" id="pip" data-ic="pip" aria-label="Picture in picture"></button></div>
  <div id="mid" class="cc"><button class="ib gl b" id="r10" data-ic="r10" aria-label="Back 10 seconds"></button><button class="ib huge gl b" id="pp" aria-label="Play or pause"></button><button class="ib gl b" id="f10" data-ic="f10" aria-label="Forward 10 seconds"></button></div>
  <div id="bot" class="cc gl">
-  <div class="sc"><span id="cu">0:00</span><input type="range" id="sk" min="0" max="1000" value="0"><span id="dd">0:00</span></div>
+  <div class="sc"><span id="cu">0:00</span><input type="range" id="sk" min="0" max="10000" value="0"><span id="dd">0:00</span></div>
   <div class="r2"><button class="ib b" id="mu" data-ic="vol" aria-label="Mute"></button><button class="ib b" id="lp" data-ic="loop" aria-label="Loop"></button><button class="ib b" id="sp">1×</button><button class="ib b" id="fs" data-ic="fs" aria-label="Fullscreen"></button></div>
  </div>
 </div>
@@ -212,6 +212,9 @@ function toast(m,act,fn){const t=$('#toast');clearTimeout(tc);t.textContent=m;t.
    window has closed, so the deleted blob can be released. */
 function dropToast(){const t=$('#toast');if(!t||t.classList.contains('on'))return;t.textContent='';t.style.pointerEvents='none';dropPendingUndo()}
 const fmt=s=>{if(!isFinite(s))return'0:00';s=Math.floor(s);const h=Math.floor(s/3600),m=Math.floor(s%3600/60),c=String(s%60).padStart(2,'0');return h?h+':'+String(m).padStart(2,'0')+':'+c:m+':'+c};
+/* Duration in seconds, or 0 when the engine has no usable value yet: NaN before metadata
+   arrives, Infinity for a stream it cannot seek to the end. Every duration read goes through here. */
+const dur=v=>{const d=v&&v.duration;return isFinite(d)&&d>0?d:0};
 const rng=(el)=>{el.style.setProperty('--p',((el.value-el.min)/(el.max-el.min)*100)+'%')};
 /* splash */
 setTimeout(()=>{$('#splash').classList.add('out');setTimeout(()=>$('#splash').remove(),900)},1500);
@@ -231,8 +234,10 @@ function meta(it){return new Promise(r=>{const v=document.createElement('video')
  const done=()=>{if(settled)return;settled=true;release();r()};
  timer=setTimeout(done,4000);
  v.src=it.url;
- v.onloadedmetadata=()=>{it.dur=v.duration;try{v.currentTime=Math.min(1,(v.duration||2)/3)}catch(e){done()}};
- v.onseeked=()=>{try{const c=document.createElement('canvas');c.width=320;c.height=Math.round(320*v.videoHeight/v.videoWidth)||200;const x=c.getContext('2d');if(x)x.drawImage(v,0,0,c.width,c.height);it.th=c.toDataURL('image/jpeg',.7)}catch(e){}done()};
+ v.onloadedmetadata=()=>{it.dur=dur(v);const d=dur(v);try{v.currentTime=Math.min(1,(d||2)/3)}catch(e){done()}};
+ v.onseeked=()=>{try{const vw=v.videoWidth,vh=v.videoHeight;
+ /* no decoded frame (unsupported codec, audio-only file) means no thumbnail, not a broken one */
+ if(vw>0&&vh>0){const c=document.createElement('canvas');c.width=320;c.height=Math.round(320*vh/vw)||200;const x=c.getContext('2d');if(x)x.drawImage(v,0,0,c.width,c.height);it.th=c.toDataURL('image/jpeg',.7)}}catch(e){}done()};
  v.onerror=done})}
 function render(){const g=$('#grid');g.innerHTML='';$('#empty').hidden=S.items.length>0;S.items.forEach((it,i)=>{const c=document.createElement('div');c.className='card gl b';c.style.setProperty('--i',i);c.setAttribute('role','button');c.innerHTML='<div class="th"><span class="du"></span><i class="pp">'+svg('play')+'</i></div><button class="del b" aria-label="Delete video">'+svg('trash')+'</button><b></b><small></small>';if(it.th)c.querySelector('.th').style.backgroundImage='url('+it.th+')';c.querySelector('.du').textContent=fmt(it.dur);c.querySelector('b').textContent=it.name;c.querySelector('small').textContent=(it.size/1048576).toFixed(1)+' MB';c.onclick=()=>{c.classList.remove('bo');void c.offsetWidth;c.classList.add('bo');setTimeout(()=>openP(S.items.indexOf(it)),280)};c.querySelector('.del').onclick=e=>{e.stopPropagation();delItem(it,c)};g.appendChild(c)})}
 /* player */
@@ -246,7 +251,12 @@ function releaseWL(){const w=wl;wl=null;if(!w)return;try{w.release&&w.release()}
 function openP(i){const it=S.items[i];if(!it||!it.url)return;S.cur=i;
  clearRipples();
  V.src=it.url;V.playbackRate=1;$('#sp').textContent='1×';
- V.onloadedmetadata=()=>fixDur(V,()=>{if(it.pos&&it.pos<V.duration-3)V.currentTime=it.pos;$('#dd').textContent=fmt(V.duration)});
+ /* the clock and the seek bar still hold the previous video's numbers until this one reports its metadata */
+ $('#cu').textContent='0:00';$('#dd').textContent='0:00';$('#sk').value=0;$('#sk').dragging=false;rng($('#sk'));
+ V.onloadedmetadata=()=>fixDur(V,()=>{const d=dur(V);
+  /* a saved position is only worth restoring once the duration is known and the position is inside the file */
+  if(d>0&&it.pos>0&&it.pos<d-3){try{V.currentTime=it.pos}catch(e){}}
+  $('#dd').textContent=fmt(d)});
  $('#ttl').textContent=it.name;
  if(!pl.classList.contains('on'))history.pushState({l:'p'},'');
  pl.classList.add('on');V.play().catch(()=>{});showC();acquireWL();
@@ -260,12 +270,15 @@ function closeP(){if(!pl.classList.contains('on'))return;
  /* drop the source so the decoder and its buffers are released between videos */
  try{V.removeAttribute('src');V.load()}catch(e){}
  clearRipples();releaseWL();wasP=false;
+ /* a hold-to-2x that was still running when the player closed must not leak into the next video */
+ try{V.playbackRate=1}catch(e){}delete V.dataset.r;$('#x2').classList.remove('on');
  if(document.fullscreenElement)document.exitFullscreen().catch(()=>{})}
 function sheet(on){$('#sheet').classList.toggle('on',on);$('#scrim').classList.toggle('on',on)}
 /* Android-style system back */
 addEventListener('popstate',()=>{if($('#sheet').classList.contains('on'))sheet(false);else closeP()});
 $('#bk').onclick=()=>history.back();
-const skip=s=>{V.currentTime=Math.max(0,Math.min(V.duration||0,V.currentTime+s))};
+const skip=s=>{const d=dur(V),c=isFinite(V.currentTime)?V.currentTime:0;
+ try{V.currentTime=d?Math.max(0,Math.min(d,c+s)):Math.max(0,c+s)}catch(e){}};
 const tp=()=>V.paused?V.play():V.pause();
 $('#pp').onclick=()=>{tp();showC()};$('#r10').onclick=()=>{skip(-10);showC()};$('#f10').onclick=()=>{skip(10);showC()};
 V.onplay=V.onpause=()=>{setPP();showC()};
@@ -276,14 +289,21 @@ function initMS(){if(!('mediaSession' in navigator))return;try{const ms=navigato
  ms.setActionHandler('seekbackward',()=>{if(pl.classList.contains('on'))skip(-10)});
  ms.setActionHandler('seekforward',()=>{if(pl.classList.contains('on'))skip(10)})}catch(e){}}
 initMS();
-/* any decoder error while the player is open must still hand the wake lock back */
-V.addEventListener('error',()=>{if(pl.classList.contains('on'))releaseWL()});
+/* A decoder error (codec the platform cannot handle, file no longer readable) must hand the wake lock
+   back, leave the controls on screen and say what happened instead of holding a black frame. */
+V.addEventListener('error',()=>{if(!pl.classList.contains('on'))return;releaseWL();showC();toast('Can’t play this video')});
 let wasP=false;const isBad=()=>V.videoWidth>0&&V.videoHeight>V.videoWidth&&innerWidth>innerHeight&&pl.classList.contains('on');
 function chk(){V.classList.toggle('por',V.videoWidth>0&&V.videoHeight>V.videoWidth);const bad=isBad();$('#rot').classList.toggle('on',bad);if(bad){V.pause();wasP=true;pl.classList.remove('hide')}else if(wasP&&pl.classList.contains('on')){wasP=false;V.play().catch(()=>{})}}
 V.addEventListener('loadedmetadata',chk);V.addEventListener('play',()=>{if(isBad())V.pause()});addEventListener('resize',chk);if(screen.orientation)screen.orientation.addEventListener('change',chk);
-V.ontimeupdate=()=>{const k=$('#sk');if(!k.dragging){k.value=V.duration?V.currentTime/V.duration*1000:0;rng(k)}$('#cu').textContent=fmt(V.currentTime);$('#dd').textContent=fmt(V.duration)};
-V.onended=()=>{if(S.nx&&S.cur<S.items.length-1&&S.items[S.cur+1].url){toast('Playing next');const n=S.cur+1;S.items[S.cur].pos=0;openP(n)}else{pl.classList.remove('hide')}};
-const sk=$('#sk');sk.oninput=()=>{sk.dragging=true;V.currentTime=sk.value/1000*(V.duration||0);rng(sk);showC()};sk.onchange=()=>sk.dragging=false;sk.onpointerup=()=>sk.dragging=false;
+V.ontimeupdate=()=>{const k=$('#sk'),d=dur(V);if(!k.dragging){k.value=d?V.currentTime/d*10000:0;rng(k)}$('#cu').textContent=fmt(V.currentTime);$('#dd').textContent=fmt(d)};
+/* A looping video never hands over to the next one, and the next item only counts if a file is still
+   behind it. When the queue is done the finished frame keeps its controls up. */
+function nextPlayable(i){for(let n=i+1;n<S.items.length;n++)if(S.items[n]&&S.items[n].url)return n;return -1}
+V.onended=()=>{if(V.loop)return;const n=S.nx?nextPlayable(S.cur):-1;
+ if(n>-1){toast('Playing next');if(S.items[S.cur])S.items[S.cur].pos=0;openP(n)}else showC()};
+const sk=$('#sk');sk.oninput=()=>{sk.dragging=true;const d=dur(V);
+ /* scrubbing with an unknown duration is a no-op instead of a seek to NaN */
+ if(d)try{V.currentTime=sk.value/10000*d}catch(e){}rng(sk);showC()};sk.onchange=()=>sk.dragging=false;sk.onpointerup=()=>sk.dragging=false;
 $('#mu').onclick=()=>{V.muted=!V.muted;$('#mu').innerHTML=svg(V.muted?'mute':'vol');toast(V.muted?'Muted':'Sound on');showC()};
 $('#lp').onclick=()=>{V.loop=!V.loop;$('#lp').classList.toggle('act',V.loop);toast(V.loop?'Loop on':'Loop off');showC()};
 $('#pip').onclick=async()=>{try{document.pictureInPictureElement?await document.exitPictureInPicture():await V.requestPictureInPicture()}catch(e){toast('Picture in picture isn’t available here')}};
@@ -312,7 +332,15 @@ $('#sG').oninput=()=>{apply();save()};$('#sB').oninput=()=>{apply();save()};
 function theme(v){if(v==='auto')delete R.dataset.theme;else R.dataset.theme=v;$$('#seg button').forEach(b=>b.classList.toggle('on',b.dataset.v===v));save()}
 $$('#seg button').forEach(b=>b.onclick=()=>theme(b.dataset.v));
 try{const c=JSON.parse(localStorage.getItem('gp')||'null');if(c){S.snd=c.snd;S.vib=c.vib;S.nx=c.nx;S.fill=c.fill!==false;pl.classList.toggle('fill',S.fill);$('#sFill').checked=S.fill;$('#sSnd').checked=S.snd;$('#sVib').checked=S.vib;$('#sNx').checked=S.nx;$('#sG').value=c.g;$('#sB').value=c.b;S.dep=c.dep!==false;S.tilt=c.tilt!==false;S.dz=c.dz==null?60:+c.dz;S.ta=c.ta==null?60:+c.ta;S.par=c.par==null?50:+c.par;$('#sDep').checked=S.dep;$('#sTilt').checked=S.tilt;$('#sDz').value=S.dz;$('#sTa').value=S.ta;$('#sPar').value=S.par;theme(c.t||'auto')}}catch(e){}
-function fixDur(v,cb){if(v.duration!==Infinity){cb();return}v.addEventListener('timeupdate',function f(){v.removeEventListener('timeupdate',f);v.currentTime=0;cb()});v.currentTime=1e101}
+/* Some engines only reveal the real duration after a seek far past the end. That probe throws on engines
+   that clamp instead, so it is guarded, the listener settles exactly once, and a 2 s backstop fires it
+   if no timeupdate ever arrives. */
+function fixDur(v,cb){if(v.duration!==Infinity){cb();return}
+ let done=false,t;
+ const fin=()=>{if(done)return;done=true;clearTimeout(t);try{v.removeEventListener('timeupdate',fin)}catch(e){}try{v.currentTime=0}catch(e){}cb()};
+ t=setTimeout(fin,2000);
+ v.addEventListener('timeupdate',fin);
+ try{v.currentTime=1e101}catch(e){fin()}}
 let lastDel;
 /* A deleted video's blob URL is kept alive only while its undo toast is on screen, then revoked. */
 function revokeURL(it){if(!it||!it.url)return;const u=it.url;it.url='';try{URL.revokeObjectURL(u)}catch(e){}}
