@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.0.7
+
+Maintenance release: the picture is unchanged, but taps, drags and scrubbing are handled far more cheaply.
+
+- **The player clock costs one frame instead of ten writes.** The playback clock and the time labels were rewritten on every `timeupdate` event (4–10 a second); they are now painted once per animation frame, and a label is only touched when its text actually changed.
+- **4D tilt no longer measures a card on every finger move.** The card's box was read with `getBoundingClientRect()` on every `pointermove`, which forces the page to re-lay out for each event. The box is now measured once when the pointer enters a card, and refreshed when the page scrolls, the window resizes or the library re-renders. Twelve moves over one card cost one layout read instead of twelve.
+- **Tilt writes are batched** into a single animation frame per pointer move, and layout is read before anything is written, so no frame mixes the two.
+- **Fixed:** the tilt effect could stay stuck on a card after the finger was cancelled or dragged off the window, and after the app lost focus. It now clears on `pointercancel`, when the pointer leaves the window and on window blur.
+- **Resize and rotation are throttled** to one orientation check per frame instead of one per event.
+- **Fixed:** a slightly slow double tap toggled the controls before it seeked, because the single-tap action fired at 300 ms while a double tap was still accepted up to 320 ms. The single-tap delay is now longer than the double-tap window, so a double tap always seeks cleanly and a single tap still toggles the controls.
+- **Fixed:** a 2× hold whose timer was still pending when the player closed could set the next video to double speed and show the 2× badge on a closed player.
+- **Fixed:** a scrub can no longer leave a paused video playing, and a drag that is cancelled no longer leaves the seek bar stuck in its dragging state — which used to freeze the clock for the rest of the video.
+- **Scrolling and window events are declared passive** where the app never cancels the gesture (tap sound, tilt, gyro, resize, orientation, scroll), so they cannot hold up the scroll or the compositor.
+- **Nothing visible changed** — the stylesheet and the page markup are byte-identical to 1.0.6; only the inline script differs. The one timing value that moved is the internal single-tap delay, which is imperceptible and only affects when the controls toggle after a tap.
+
 ## 1.0.6
 
 Maintenance release: the picture is unchanged, but playback is now correct at the edges.

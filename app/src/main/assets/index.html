@@ -203,7 +203,8 @@ icons();
 const S={snd:true,vib:true,nx:true,fill:true,dep:true,tilt:true,dz:60,ta:60,par:50,items:[],cur:-1};
 let AC;
 function tick(f=880,d=.07,v=.13){if(S.vib&&navigator.vibrate)try{navigator.vibrate(8)}catch(e){}if(!S.snd)return;try{AC=AC||new(window.AudioContext||window.webkitAudioContext)();if(AC.state==='suspended')AC.resume();const o=AC.createOscillator(),g=AC.createGain(),t=AC.currentTime;o.type='sine';o.frequency.setValueAtTime(f,t);o.frequency.exponentialRampToValueAtTime(f*.62,t+d);g.gain.setValueAtTime(v,t);g.gain.exponentialRampToValueAtTime(.001,t+d);o.connect(g);g.connect(AC.destination);o.start(t);o.stop(t+d+.01)}catch(e){}}
-addEventListener('pointerdown',e=>{const t=e.target.closest('button,.card,.tab,.sw,.o,#scrim');if(t)tick(t.classList.contains('card')||t.id==='pp'?1040:880)},true);
+/* capture-phase tap sound: never cancels the gesture, so it is declared passive */
+addEventListener('pointerdown',e=>{const t=e.target.closest('button,.card,.tab,.sw,.o,#scrim');if(t)tick(t.classList.contains('card')||t.id==='pp'?1040:880)},{capture:true,passive:true});
 let tt,tc;
 function toast(m,act,fn){const t=$('#toast');clearTimeout(tc);t.textContent=m;t.style.pointerEvents=act?'auto':'none';
  if(act){const b=document.createElement('button');b.textContent=act;b.className='b';b.style.cssText='margin-left:14px;font-weight:800;color:#5ac8fa;position:relative;z-index:1';b.onclick=()=>{fn();t.classList.remove('on');dropToast()};t.appendChild(b)}
@@ -239,7 +240,7 @@ function meta(it){return new Promise(r=>{const v=document.createElement('video')
  /* no decoded frame (unsupported codec, audio-only file) means no thumbnail, not a broken one */
  if(vw>0&&vh>0){const c=document.createElement('canvas');c.width=320;c.height=Math.round(320*vh/vw)||200;const x=c.getContext('2d');if(x)x.drawImage(v,0,0,c.width,c.height);it.th=c.toDataURL('image/jpeg',.7)}}catch(e){}done()};
  v.onerror=done})}
-function render(){const g=$('#grid');g.innerHTML='';$('#empty').hidden=S.items.length>0;S.items.forEach((it,i)=>{const c=document.createElement('div');c.className='card gl b';c.style.setProperty('--i',i);c.setAttribute('role','button');c.innerHTML='<div class="th"><span class="du"></span><i class="pp">'+svg('play')+'</i></div><button class="del b" aria-label="Delete video">'+svg('trash')+'</button><b></b><small></small>';if(it.th)c.querySelector('.th').style.backgroundImage='url('+it.th+')';c.querySelector('.du').textContent=fmt(it.dur);c.querySelector('b').textContent=it.name;c.querySelector('small').textContent=(it.size/1048576).toFixed(1)+' MB';c.onclick=()=>{c.classList.remove('bo');void c.offsetWidth;c.classList.add('bo');setTimeout(()=>openP(S.items.indexOf(it)),280)};c.querySelector('.del').onclick=e=>{e.stopPropagation();delItem(it,c)};g.appendChild(c)})}
+function render(){const g=$('#grid');g.innerHTML='';tiltReset();$('#empty').hidden=S.items.length>0;S.items.forEach((it,i)=>{const c=document.createElement('div');c.className='card gl b';c.style.setProperty('--i',i);c.setAttribute('role','button');c.innerHTML='<div class="th"><span class="du"></span><i class="pp">'+svg('play')+'</i></div><button class="del b" aria-label="Delete video">'+svg('trash')+'</button><b></b><small></small>';if(it.th)c.querySelector('.th').style.backgroundImage='url('+it.th+')';c.querySelector('.du').textContent=fmt(it.dur);c.querySelector('b').textContent=it.name;c.querySelector('small').textContent=(it.size/1048576).toFixed(1)+' MB';c.onclick=()=>{c.classList.remove('bo');void c.offsetWidth;c.classList.add('bo');setTimeout(()=>openP(S.items.indexOf(it)),280)};c.querySelector('.del').onclick=e=>{e.stopPropagation();delItem(it,c)};g.appendChild(c)})}
 /* player */
 const V=$('#v'),pl=$('#pl');let hideT,wl;
 const setPP=()=>$('#pp').innerHTML=svg(V.paused?'play':'pause');setPP();
@@ -252,7 +253,7 @@ function openP(i){const it=S.items[i];if(!it||!it.url)return;S.cur=i;
  clearRipples();
  V.src=it.url;V.playbackRate=1;$('#sp').textContent='1×';
  /* the clock and the seek bar still hold the previous video's numbers until this one reports its metadata */
- $('#cu').textContent='0:00';$('#dd').textContent='0:00';$('#sk').value=0;$('#sk').dragging=false;rng($('#sk'));
+ $('#cu').textContent='0:00';$('#dd').textContent='0:00';lastCu='0:00';lastDd='0:00';$('#sk').value=0;$('#sk').dragging=false;rng($('#sk'));
  V.onloadedmetadata=()=>fixDur(V,()=>{const d=dur(V);
   /* a saved position is only worth restoring once the duration is known and the position is inside the file */
   if(d>0&&it.pos>0&&it.pos<d-3){try{V.currentTime=it.pos}catch(e){}}
@@ -269,8 +270,10 @@ function closeP(){if(!pl.classList.contains('on'))return;
  pl.classList.remove('on');$('#rot').classList.remove('on');
  /* drop the source so the decoder and its buffers are released between videos */
  try{V.removeAttribute('src');V.load()}catch(e){}
- clearRipples();releaseWL();wasP=false;
- /* a hold-to-2x that was still running when the player closed must not leak into the next video */
+ clearRipples();releaseWL();wasP=false;timePaintStop();
+ /* a hold-to-2x that was still running when the player closed must not leak into the next video:
+    the pending timer is cancelled, the hold state is dropped and the rate goes back to normal */
+ clearTimeout(hold);held=false;
  try{V.playbackRate=1}catch(e){}delete V.dataset.r;$('#x2').classList.remove('on');
  if(document.fullscreenElement)document.exitFullscreen().catch(()=>{})}
 function sheet(on){$('#sheet').classList.toggle('on',on);$('#scrim').classList.toggle('on',on)}
@@ -293,17 +296,36 @@ initMS();
    back, leave the controls on screen and say what happened instead of holding a black frame. */
 V.addEventListener('error',()=>{if(!pl.classList.contains('on'))return;releaseWL();showC();toast('Can’t play this video')});
 let wasP=false;const isBad=()=>V.videoWidth>0&&V.videoHeight>V.videoWidth&&innerWidth>innerHeight&&pl.classList.contains('on');
-function chk(){V.classList.toggle('por',V.videoWidth>0&&V.videoHeight>V.videoWidth);const bad=isBad();$('#rot').classList.toggle('on',bad);if(bad){V.pause();wasP=true;pl.classList.remove('hide')}else if(wasP&&pl.classList.contains('on')){wasP=false;V.play().catch(()=>{})}}
-V.addEventListener('loadedmetadata',chk);V.addEventListener('play',()=>{if(isBad())V.pause()});addEventListener('resize',chk);if(screen.orientation)screen.orientation.addEventListener('change',chk);
-V.ontimeupdate=()=>{const k=$('#sk'),d=dur(V);if(!k.dragging){k.value=d?V.currentTime/d*10000:0;rng(k)}$('#cu').textContent=fmt(V.currentTime);$('#dd').textContent=fmt(d)};
+function chk(){rectDirty=true;V.classList.toggle('por',V.videoWidth>0&&V.videoHeight>V.videoWidth);const bad=isBad();$('#rot').classList.toggle('on',bad);if(bad){V.pause();wasP=true;pl.classList.remove('hide')}else if(wasP&&pl.classList.contains('on')){wasP=false;V.play().catch(()=>{})}}
+/* resize and orientation both fire in bursts; the check reads layout, so it runs at most once a frame */
+let chkFrame=0;
+function chkSoon(){if(chkFrame)return;chkFrame=requestAnimationFrame(()=>{chkFrame=0;chk()})}
+V.addEventListener('loadedmetadata',chk);V.addEventListener('play',()=>{if(isBad())V.pause()});addEventListener('resize',chkSoon,{passive:true});if(screen.orientation)screen.orientation.addEventListener('change',chkSoon,{passive:true});
+/* timeupdate arrives 4-10x a second and each event used to write four DOM values. The writes are
+   now coalesced into one animation frame, and a label is only touched when its text changed. */
+let tuFrame=0,lastCu='',lastDd='';
+function paintTime(){tuFrame=0;const k=$('#sk'),d=dur(V),cu=fmt(V.currentTime),dd=fmt(d);
+ if(!k.dragging){k.value=d?V.currentTime/d*10000:0;rng(k)}
+ if(cu!==lastCu){$('#cu').textContent=cu;lastCu=cu}
+ if(dd!==lastDd){$('#dd').textContent=dd;lastDd=dd}}
+function timePaint(){if(!tuFrame)tuFrame=requestAnimationFrame(paintTime)}
+function timePaintStop(){if(tuFrame){cancelAnimationFrame(tuFrame);tuFrame=0}lastCu=lastDd=''}
+V.ontimeupdate=timePaint;
 /* A looping video never hands over to the next one, and the next item only counts if a file is still
    behind it. When the queue is done the finished frame keeps its controls up. */
 function nextPlayable(i){for(let n=i+1;n<S.items.length;n++)if(S.items[n]&&S.items[n].url)return n;return -1}
 V.onended=()=>{if(V.loop)return;const n=S.nx?nextPlayable(S.cur):-1;
  if(n>-1){toast('Playing next');if(S.items[S.cur])S.items[S.cur].pos=0;openP(n)}else showC()};
-const sk=$('#sk');sk.oninput=()=>{sk.dragging=true;const d=dur(V);
+const sk=$('#sk');let seekPaused=false;
+sk.oninput=()=>{sk.dragging=true;const d=dur(V),wasP=V.paused;
  /* scrubbing with an unknown duration is a no-op instead of a seek to NaN */
- if(d)try{V.currentTime=sk.value/10000*d}catch(e){}rng(sk);showC()};sk.onchange=()=>sk.dragging=false;sk.onpointerup=()=>sk.dragging=false;
+ if(d)try{V.currentTime=sk.value/10000*d}catch(e){}
+ /* a scrub is not a play command: remember the paused state so the end of the drag can honour it */
+ if(wasP)seekPaused=true;
+ rng(sk);showC()};
+/* ending a drag always clears the flag, including when the pointer is cancelled mid-drag */
+const seekEnd=()=>{sk.dragging=false;if(seekPaused&&!V.paused)try{V.pause()}catch(e){}seekPaused=false};
+sk.onchange=seekEnd;sk.onpointerup=seekEnd;sk.onpointercancel=seekEnd;
 $('#mu').onclick=()=>{V.muted=!V.muted;$('#mu').innerHTML=svg(V.muted?'mute':'vol');toast(V.muted?'Muted':'Sound on');showC()};
 $('#lp').onclick=()=>{V.loop=!V.loop;$('#lp').classList.toggle('act',V.loop);toast(V.loop?'Loop on':'Loop off');showC()};
 $('#pip').onclick=async()=>{try{document.pictureInPictureElement?await document.exitPictureInPicture():await V.requestPictureInPicture()}catch(e){toast('Picture in picture isn’t available here')}};
@@ -321,7 +343,11 @@ function clearRipples(){rips.forEach(s=>s.remove());rips.clear();const r=$('#rip
 tz.oncontextmenu=e=>e.preventDefault();tz.onpointerdown=e=>{held=false;hold=setTimeout(()=>{held=true;V.dataset.r=V.playbackRate;V.playbackRate=2;$('#x2').classList.add('on');tick(1200)},480)};
 const rel=()=>{clearTimeout(hold);if(held){V.playbackRate=+V.dataset.r||1;$('#x2').classList.remove('on')}};
 tz.onpointerleave=rel;tz.onpointercancel=rel;
-tz.onpointerup=e=>{rel();if(held)return;const now=Date.now(),w=innerWidth,x=e.clientX;if(now-lt<320){clearTimeout(st);lt=0;if(x<w*.35){skip(-10);ripple(e.clientX,e.clientY,'−10')}else if(x>w*.65){skip(10);ripple(e.clientX,e.clientY,'+10')}else tp();showC()}else{lt=now;st=setTimeout(()=>{pl.classList.contains('hide')?showC():pl.classList.add('hide')},300)}};
+/* The single-tap action used to fire 300 ms after a tap while a double tap was still accepted up to
+   320 ms, so a slightly slow double tap toggled the controls first and then seeked. The single-tap
+   delay is now longer than the double-tap window, so a double tap is always recognised on its own. */
+const DBL=350,SINGLE=380;
+tz.onpointerup=e=>{rel();if(held)return;const now=Date.now(),w=innerWidth,x=e.clientX;if(now-lt<DBL){clearTimeout(st);lt=0;if(x<w*.35){skip(-10);ripple(e.clientX,e.clientY,'−10')}else if(x>w*.65){skip(10);ripple(e.clientX,e.clientY,'+10')}else tp();showC()}else{lt=now;st=setTimeout(()=>{if(!pl.classList.contains('on'))return;pl.classList.contains('hide')?showC():pl.classList.add('hide')},SINGLE)}};
 addEventListener('keydown',e=>{if(!pl.classList.contains('on'))return;if(e.key===' '){e.preventDefault();tp()}if(e.key==='ArrowRight')skip(10);if(e.key==='ArrowLeft')skip(-10);if(e.key==='Escape')history.back();showC()});
 /* settings */
 const R=document.documentElement;
@@ -355,10 +381,16 @@ let gx=0,gy=0,gOn=false,gT=0,lastC=null;
 function setDz(){R.style.setProperty('--dzk',(S.dz/100*1.2+.12).toFixed(2))}
 function setTiltK(){R.style.setProperty('--tiltk',(S.ta/60).toFixed(2))}
 function setPar(){R.style.setProperty('--park',(S.par/50).toFixed(2))}
+/* every card is replaced on a re-render, so the cached node and box are dropped with them */
+function tiltReset(){lastC=null;rectC=null;rectBox=null;rectDirty=true;pmC=null}
 function clearTilt(c){c=c||lastC;if(!c)return;['--prx','--pry','--px','--py','--mx','--my'].forEach(v=>c.style.removeProperty(v))}
-function tilt(c,e){const r=c.getBoundingClientRect();if(!r.width||!r.height)return;
- const px=Math.max(-.5,Math.min(.5,(e.clientX-r.left)/r.width-.5));
- const py=Math.max(-.5,Math.min(.5,(e.clientY-r.top)/r.height-.5));
+/* A card's box is measured once, when the pointer first enters it or after a scroll/resize, instead of
+   on every pointermove: getBoundingClientRect() in a move handler forces a layout per event. */
+let rectC=null,rectBox=null,rectDirty=true;
+function cardRect(c){if(c!==rectC||rectDirty||!rectBox){rectC=c;rectBox=c.getBoundingClientRect();rectDirty=false}return rectBox}
+function tilt(c,e,x,y){const r=cardRect(c);if(!r||!r.width||!r.height)return;
+ const px=Math.max(-.5,Math.min(.5,((x==null?e.clientX:x)-r.left)/r.width-.5));
+ const py=Math.max(-.5,Math.min(.5,((y==null?e.clientY:y)-r.top)/r.height-.5));
  const amp=12*(S.ta/100);
  c.style.setProperty('--pry',(px*amp).toFixed(2)+'deg');
  c.style.setProperty('--prx',(-py*amp).toFixed(2)+'deg');
@@ -370,19 +402,33 @@ function onGyro(e){const ga=e.gamma||0,be=e.beta==null?45:e.beta;
  gx=Math.max(-1,Math.min(1,ga/32));gy=Math.max(-1,Math.min(1,(be-45)/32));
  if(gT)return;gT=requestAnimationFrame(()=>{gT=0;
   R.style.setProperty('--gx',gx.toFixed(3));R.style.setProperty('--gy',gy.toFixed(3))})}
-function startGyro(){if(gOn)return;gOn=true;try{addEventListener('deviceorientation',onGyro)}catch(e){}}
+function startGyro(){if(gOn)return;gOn=true;try{addEventListener('deviceorientation',onGyro,{passive:true})}catch(e){}}
 function stopGyro(){if(!gOn)return;gOn=false;try{removeEventListener('deviceorientation',onGyro)}catch(e){}
  R.style.setProperty('--gx','0');R.style.setProperty('--gy','0')}
 function depthApply(){R.dataset.depth=S.dep?'on':'off';R.dataset.tilt=S.tilt?'on':'off';
  setDz();setTiltK();setPar();rng($('#sDz'));rng($('#sTa'));rng($('#sPar'));
  if(S.tilt)startGyro();else{clearTilt();stopGyro()}}
-addEventListener('pointermove',e=>{if(!S.tilt)return;
+/* one rAF per frame: the pointer position is stored, and the frame reads layout before it writes any
+   custom property, so no layout is forced between a write and the next read. */
+let pmC=null,pmX=0,pmY=0,pmFrame=0;
+function tiltFrame(){pmFrame=0;const c=pmC;
+ if(!c){if(lastC){clearTilt();lastC=null}return}
+ const r=cardRect(c);                 /* read */
+ if(c!==lastC){clearTilt();lastC=c}    /* write */
+ if(r)tilt(c,null,pmX,pmY)}            /* write */
+/* pointercancel, a pointer that leaves the window and a window blur all end the tilt */
+function endTilt(){if(pmFrame){cancelAnimationFrame(pmFrame);pmFrame=0}pmC=null;if(lastC){clearTilt();lastC=null}}
+addEventListener('pointermove',e=>{if(!S.tilt||pl.classList.contains('on'))return;
+ pmC=e.target&&e.target.closest?e.target.closest('.card'):null;pmX=e.clientX;pmY=e.clientY;
+ if(!pmFrame)pmFrame=requestAnimationFrame(tiltFrame)},{passive:true});
+addEventListener('pointerdown',e=>{if(!S.tilt||pl.classList.contains('on'))return;
  const c=e.target&&e.target.closest?e.target.closest('.card'):null;
- if(c!==lastC){clearTilt();lastC=c}
- if(c)tilt(c,e)},{passive:true});
-addEventListener('pointerdown',e=>{if(!S.tilt)return;
- const c=e.target&&e.target.closest?e.target.closest('.card'):null;
- if(c){lastC=c;tilt(c,e)}},{passive:true});
+ if(c){const r=cardRect(c);if(c!==lastC){clearTilt();lastC=c}if(r)tilt(c,e)}},{passive:true});
+addEventListener('pointercancel',endTilt,{passive:true});
+addEventListener('blur',endTilt);
+addEventListener('pointerout',e=>{if(e.pointerType==='touch')return;if(!e.relatedTarget)endTilt()},{passive:true});
+/* a scrolled page moves every card, so the cached box is no longer valid */
+addEventListener('scroll',()=>{rectDirty=true},{passive:true,capture:true});
 $('#sDep').onchange=e=>{S.dep=e.target.checked;save();depthApply();toast(S.dep?'Depth effect on':'Depth effect off')};
 $('#sTilt').onchange=e=>{S.tilt=e.target.checked;save();depthApply();toast(S.tilt?'4D tilt on':'4D tilt off')};
 $('#sDz').oninput=()=>{S.dz=+$('#sDz').value;setDz();rng($('#sDz'));save()};

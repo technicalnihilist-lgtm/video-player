@@ -33,16 +33,16 @@ Tick items as they are done and append to the progress log at the bottom.
 
 ## Day 3 · 2026-11-03 · Input responsiveness
 
-- [ ] Throttle `timeupdate` DOM writes to one rAF per frame instead of every event (4–10 Hz today).
-- [ ] Batch tilt CSS-variable writes into a single rAF per pointer move.
-- [ ] Cache the card's bounding rect on pointer-enter / resize instead of calling `getBoundingClientRect()` on every move.
-- [ ] Clear tilt state on `pointercancel` and when the pointer leaves the window.
-- [ ] Remove layout thrash from the pointer path (no reads after writes in the same frame).
-- [ ] Debounce or rAF-throttle the `resize` / orientation handler.
-- [ ] Audit every listener for `{passive:true}` where the handler never calls `preventDefault`.
-- [ ] Review single-tap vs double-tap timing so a slow double tap still seeks.
-- [ ] Hold-to-2× must restore the previous rate if the player closes mid-hold.
-- [ ] Scrubbing while paused must not auto-resume playback.
+- [x] Throttle `timeupdate` DOM writes to one rAF per frame instead of every event (4–10 Hz today).
+- [x] Batch tilt CSS-variable writes into a single rAF per pointer move.
+- [x] Cache the card's bounding rect on pointer-enter / resize instead of calling `getBoundingClientRect()` on every move.
+- [x] Clear tilt state on `pointercancel` and when the pointer leaves the window.
+- [x] Remove layout thrash from the pointer path (no reads after writes in the same frame).
+- [x] Debounce or rAF-throttle the `resize` / orientation handler.
+- [x] Audit every listener for `{passive:true}` where the handler never calls `preventDefault`.
+- [x] Review single-tap vs double-tap timing so a slow double tap still seeks.
+- [x] Hold-to-2× must restore the previous rate if the player closes mid-hold.
+- [x] Scrubbing while paused must not auto-resume playback.
 
 ## Day 4 · 2026-11-04 · Settings & persistence
 
@@ -271,7 +271,7 @@ Tick items as they are done and append to the progress log at the bottom.
 | --- | --- | --- | --- | --- |
 | 1 | 2026-11-01 | 1.0.5 | 10/10 | Memory & leaks — executed 2026-11-05. 20 add/20 delete stress: 20/20 blob URLs revoked, nodes 382 → 162, 0 window listeners added over 5 open/close cycles. No item skipped. |
 | 2 | 2026-11-02 | 1.0.6 | 10/10 | Playback correctness — executed 2026-11-06. Seek bar 1000 → 10000 steps (7.2 s → 0.72 s per step on a 2 h video); decoder errors now say so via the existing toast and keep the controls up; the `1e101` duration probe is guarded, settles once and has a 2 s backstop; one `dur()` guard for every duration read; auto-next respects loop and skips items with no file; rate reset on open and on close; position restored only when the duration is known and the position is inside the file; skip/scrub bounded; ended leaves the controls up with the right icon. Item 7 was half-done already (openP reset the rate) — the close path now resets it too. Headless jsdom check: 7 of these invariants fail on 1.0.5, all pass on 1.0.6; `tools/stress-memory.mjs` still clean (20/20 revoked, 0 listener growth). No item skipped, no visual change. |
-| 3 | 2026-11-03 | — | 0/10 | Input responsiveness |
+| 3 | 2026-11-03 | 1.0.7 | 10/10 | Input responsiveness — executed 2026-11-10. `timeupdate` now paints once per animation frame and only rewrites a label whose text changed; the 4D tilt caches the card's box (measured once per entry, invalidated on scroll/resize/re-render) and writes its six custom properties in one rAF, reading layout before any write, so 12 pointer moves over a card cost 1 layout read instead of 12; tilt is released on `pointercancel`, on a pointer leaving the window and on window blur; `resize`/orientation run the orientation check once a frame; the tap-sound, gyro, resize, orientation, pointer-move/out/cancel and scroll listeners are declared passive; the single-tap delay (380 ms) is now longer than the double-tap window (350 ms) so a slow double tap seeks instead of toggling the controls first; a 2x hold whose timer outlives the close can no longer set the next video to double speed; a scrub never resumes a paused video and a cancelled drag no longer leaves the seek bar stuck, which used to freeze the clock. Extra glitch: tilt work is skipped while the player is open. Headless jsdom check: 13 of these invariants fail on 1.0.6 and all pass on 1.0.7; `tools/stress-memory.mjs` still clean (20/20 revoked, 0 listener growth, 0 console errors). No item skipped, no visual change (stylesheet and markup byte-identical). |
 | 4 | 2026-11-04 | — | 0/10 | Settings & persistence |
 | 5 | 2026-11-05 | — | 0/10 | Rendering & DOM |
 | 6 | 2026-11-06 | — | 0/10 | Player teardown & power |
