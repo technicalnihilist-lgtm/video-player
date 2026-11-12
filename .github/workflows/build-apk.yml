@@ -15,17 +15,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Apply pending day edits
-        if: hashFiles('tools/day4.py') != ''
-        run: |
-          python3 tools/day4.py
-          git config user.name "technicalnihilist-lgtm"
-          git config user.email "technicalnihilist@gmail.com"
-          git rm -q tools/day4.py
-          git add -A
-          git commit -q -m "Day 4: settings & persistence pass (v1.0.8)"
-          git push origin HEAD:main
-
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
