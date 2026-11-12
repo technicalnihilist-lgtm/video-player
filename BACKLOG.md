@@ -46,16 +46,16 @@ Tick items as they are done and append to the progress log at the bottom.
 
 ## Day 4 · 2026-11-04 · Settings & persistence
 
-- [ ] Debounce `save()` — it currently stringifies and writes localStorage on every slider `input` event.
-- [ ] Skip the write when the serialised state has not changed.
-- [ ] Clamp restored values (depth, tilt, parallax, transparency, blur) to the slider's min/max on load.
-- [ ] Handle corrupted or partial saved JSON without losing the rest of the settings.
-- [ ] Swallow `QuotaExceededError` / private-mode storage failures without breaking the UI.
-- [ ] Apply the saved theme before first paint so a light-mode user never sees a dark flash.
-- [ ] Restore settings before the splash finishes so the first frame is already correct.
-- [ ] Verify toggles and sliders reflect restored values exactly after a reload.
-- [ ] Make sure a settings change never triggers a full re-render of the library.
-- [ ] Confirm the depth/tilt engine applies restored values on boot without replaying the entry animation.
+- [x] Debounce `save()` — it currently stringifies and writes localStorage on every slider `input` event.
+- [x] Skip the write when the serialised state has not changed.
+- [x] Clamp restored values (depth, tilt, parallax, transparency, blur) to the slider's min/max on load.
+- [x] Handle corrupted or partial saved JSON without losing the rest of the settings.
+- [x] Swallow `QuotaExceededError` / private-mode storage failures without breaking the UI.
+- [x] Apply the saved theme before first paint so a light-mode user never sees a dark flash.
+- [x] Restore settings before the splash finishes so the first frame is already correct.
+- [x] Verify toggles and sliders reflect restored values exactly after a reload.
+- [x] Make sure a settings change never triggers a full re-render of the library.
+- [x] Confirm the depth/tilt engine applies restored values on boot without replaying the entry animation.
 
 ## Day 5 · 2026-11-05 · Rendering & DOM
 
@@ -272,7 +272,7 @@ Tick items as they are done and append to the progress log at the bottom.
 | 1 | 2026-11-01 | 1.0.5 | 10/10 | Memory & leaks — executed 2026-11-05. 20 add/20 delete stress: 20/20 blob URLs revoked, nodes 382 → 162, 0 window listeners added over 5 open/close cycles. No item skipped. |
 | 2 | 2026-11-02 | 1.0.6 | 10/10 | Playback correctness — executed 2026-11-06. Seek bar 1000 → 10000 steps (7.2 s → 0.72 s per step on a 2 h video); decoder errors now say so via the existing toast and keep the controls up; the `1e101` duration probe is guarded, settles once and has a 2 s backstop; one `dur()` guard for every duration read; auto-next respects loop and skips items with no file; rate reset on open and on close; position restored only when the duration is known and the position is inside the file; skip/scrub bounded; ended leaves the controls up with the right icon. Item 7 was half-done already (openP reset the rate) — the close path now resets it too. Headless jsdom check: 7 of these invariants fail on 1.0.5, all pass on 1.0.6; `tools/stress-memory.mjs` still clean (20/20 revoked, 0 listener growth). No item skipped, no visual change. |
 | 3 | 2026-11-03 | 1.0.7 | 10/10 | Input responsiveness — executed 2026-11-10. `timeupdate` now paints once per animation frame and only rewrites a label whose text changed; the 4D tilt caches the card's box (measured once per entry, invalidated on scroll/resize/re-render) and writes its six custom properties in one rAF, reading layout before any write, so 12 pointer moves over a card cost 1 layout read instead of 12; tilt is released on `pointercancel`, on a pointer leaving the window and on window blur; `resize`/orientation run the orientation check once a frame; the tap-sound, gyro, resize, orientation, pointer-move/out/cancel and scroll listeners are declared passive; the single-tap delay (380 ms) is now longer than the double-tap window (350 ms) so a slow double tap seeks instead of toggling the controls first; a 2x hold whose timer outlives the close can no longer set the next video to double speed; a scrub never resumes a paused video and a cancelled drag no longer leaves the seek bar stuck, which used to freeze the clock. Extra glitch: tilt work is skipped while the player is open. Headless jsdom check: 13 of these invariants fail on 1.0.6 and all pass on 1.0.7; `tools/stress-memory.mjs` still clean (20/20 revoked, 0 listener growth, 0 console errors). No item skipped, no visual change (stylesheet and markup byte-identical). |
-| 4 | 2026-11-04 | — | 0/10 | Settings & persistence |
+| 4 | 2026-11-04 | 1.0.8 | 10/10 | Settings & persistence — executed 2026-11-12. `save()` debounced to one write per 250 ms, flushed on slider release, `pagehide`, `beforeunload` and `visibilitychange:hidden`, and skipped when the serialised state is unchanged (a 20-step slider drag writes once, not 20 times; 10 no-op inputs write 0 times); boot no longer writes back the state it just read; every restored number is parsed and clamped into its own slider range (4-45, 4-60, 0-100); a truncated, array, scalar or hand-edited payload no longer loses every field — each field is validated on its own, missing booleans keep their `true` default (a partial payload used to switch sound, haptics, play-next, fill, depth and tilt off), and a damaged payload is not recorded as saved so the next change rewrites it healed; all storage access goes through one guarded `get`/`set` wrapper, so `QuotaExceededError`, private mode and storage-disabled throw nothing into a handler and the change still applies; the saved theme is applied by a blocking `<head>` script before first paint, so no dark flash for light-mode users, and the rest is restored before the splash finishes. Verified: settings never re-render the library grid (same node identity across slider/toggle/theme changes) and `depthApply()` applies restored values before `render()` with no entry animation replayed. Headless jsdom check (22 assertions: clean boot, exact round trip, boot writes nothing, 6 corrupt/partial payloads, quota failure, pre-paint theme, no grid re-render) all pass; `tools/stress-memory.mjs` still clean (20/20 revoked, 0 listener growth). No item skipped, no visual change (stylesheet and markup byte-identical). |
 | 5 | 2026-11-05 | — | 0/10 | Rendering & DOM |
 | 6 | 2026-11-06 | — | 0/10 | Player teardown & power |
 | 7 | 2026-11-07 | — | 0/10 | Accessibility |

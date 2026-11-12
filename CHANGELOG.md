@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.0.8
+
+Maintenance release: the picture is unchanged, but your settings are now saved safely and restored exactly.
+
+- **Settings are written once per gesture, not once per pixel.** Dragging a slider used to serialise the whole settings object and write it to storage on every `input` event — up to dozens of writes per drag. Writes are now coalesced into one every 250 ms, committed immediately when you let go of a slider, and committed again if the app is backgrounded or closed mid-drag.
+- **A write that changes nothing is skipped.** The serialised state is compared with what is already stored, so tapping a setting back to the value it already had no longer touches storage.
+- **Restored values are validated and clamped.** A saved depth, tilt, parallax, transparency or blur value is forced into its own slider's range, so a hand-edited or out-of-range number can no longer push a custom property to a nonsense value.
+- **A damaged settings payload no longer costs you everything.** Previously one bad field made the whole restore throw and every setting fell back to default. Each field is now validated on its own: a truncated or partially corrupt payload keeps the fields that are still readable and defaults only the rest, and the healed state is rewritten on your next change.
+- **Storage failures are contained.** Private mode, storage disabled or a full quota used to be swallowed by an outer `catch`; every read and write now goes through one guarded wrapper, so a refused write cannot throw into a settings handler or leave the UI half-applied.
+- **Fixed:** restoring settings on boot used to write them straight back to storage. Boot is now read-only, and nothing is written until you change something.
+- **No dark flash for light-mode users.** The saved theme is applied by a tiny blocking script in `<head>`, before the first paint, instead of at the end of the inline script — so a light-mode user no longer sees the dark splash for a moment on launch. The rest of the settings are restored before the splash finishes, so the first frame is already correct.
+- **Fixed:** a partially saved payload could turn sound, haptics, play-next, stretch-to-fill, depth or tilt *off* even though they default to on, because a missing field was read as `undefined`. Missing booleans now keep their default.
+- **Nothing visible changed** — the stylesheet is byte-identical to 1.0.7 and the page markup is unchanged; the only additions are a `<head>` script that sets the already-supported theme attribute and the persistence code in the inline script.
+
 ## 1.0.7
 
 Maintenance release: the picture is unchanged, but taps, drags and scrubbing are handled far more cheaply.

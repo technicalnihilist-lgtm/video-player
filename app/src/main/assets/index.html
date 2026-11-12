@@ -1,4 +1,8 @@
 <!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name="theme-color" content="#0b0d1a"><title>Glass Player</title>
+<script>/* The stored theme is applied before the first paint, so a light-mode user never
+   sees a dark flash while the rest of the app boots. Read-only and fully guarded: a corrupt or
+   unreadable payload just leaves the system default in place. */
+try{var _g=JSON.parse(localStorage.getItem('gp')||'null');if(_g&&(_g.t==='light'||_g.t==='dark'))document.documentElement.dataset.theme=_g.t}catch(e){}</script>
 <style>
 :root{--g:.18;--bl:26px;--sp:cubic-bezier(.34,1.56,.64,1);--tx:#fff;--sub:rgba(255,255,255,.64);--b1:#3a1f9a;--b2:#0b6aa8;--b3:#a3246b;--base:#080a17;--hl:rgba(255,255,255,.55);--ln:rgba(255,255,255,.28);--ac:#0a84ff;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 @media(prefers-color-scheme:light){:root:not([data-theme="dark"]){--tx:#10131f;--sub:rgba(16,19,31,.6);--b1:#b9a6ff;--b2:#8fd3ff;--b3:#ffb3d6;--base:#eef0fa;--hl:rgba(255,255,255,.9);--ln:rgba(255,255,255,.7)}}
@@ -351,13 +355,46 @@ tz.onpointerup=e=>{rel();if(held)return;const now=Date.now(),w=innerWidth,x=e.cl
 addEventListener('keydown',e=>{if(!pl.classList.contains('on'))return;if(e.key===' '){e.preventDefault();tp()}if(e.key==='ArrowRight')skip(10);if(e.key==='ArrowLeft')skip(-10);if(e.key==='Escape')history.back();showC()});
 /* settings */
 const R=document.documentElement;
-function save(){try{localStorage.setItem('gp',JSON.stringify({snd:S.snd,vib:S.vib,nx:S.nx,fill:S.fill,dep:S.dep,tilt:S.tilt,dz:S.dz,ta:S.ta,par:S.par,g:$('#sG').value,b:$('#sB').value,t:R.dataset.theme||'auto'}))}catch(e){}}
+/* Storage can be absent or refuse writes (private mode, storage disabled, quota full). Every access
+   goes through this wrapper, so a failed write can never throw into a handler or break the UI. */
+const store={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k,v){try{localStorage.setItem(k,v);return true}catch(e){return false}}};
+function snapshot(){return JSON.stringify({snd:S.snd,vib:S.vib,nx:S.nx,fill:S.fill,dep:S.dep,tilt:S.tilt,dz:S.dz,ta:S.ta,par:S.par,g:$('#sG').value,b:$('#sB').value,t:R.dataset.theme||'auto'})}
+let saveT=0,lastSaved=null;
+/* A slider fires input on every pixel of a drag. Writes are coalesced into one per 250 ms, and a write
+   whose serialised state is identical to the stored one is skipped entirely. */
+function writeNow(){saveT=0;const j=snapshot();if(j===lastSaved)return;if(store.set('gp',j))lastSaved=j}
+function save(){if(saveT)return;saveT=setTimeout(writeNow,250)}
+function saveFlush(){if(saveT){clearTimeout(saveT);saveT=0}writeNow()}
 function apply(){R.style.setProperty('--g',$('#sG').value/100);R.style.setProperty('--bl',$('#sB').value+'px');rng($('#sG'));rng($('#sB'))}
 $('#sSnd').onchange=e=>{S.snd=e.target.checked;save();tick()};$('#sVib').onchange=e=>{S.vib=e.target.checked;save()};$('#sNx').onchange=e=>{S.nx=e.target.checked;save()};$('#sFill').onchange=e=>{S.fill=e.target.checked;pl.classList.toggle('fill',S.fill);save();toast(S.fill?'Stretched to fill the screen':'Original shape')};
 $('#sG').oninput=()=>{apply();save()};$('#sB').oninput=()=>{apply();save()};
-function theme(v){if(v==='auto')delete R.dataset.theme;else R.dataset.theme=v;$$('#seg button').forEach(b=>b.classList.toggle('on',b.dataset.v===v));save()}
+/* releasing a slider commits the value straight away instead of waiting for the debounce */
+['#sG','#sB','#sDz','#sTa','#sPar'].forEach(q=>{$(q).onchange=saveFlush});
+function theme(v,quiet){if(v==='auto')delete R.dataset.theme;else R.dataset.theme=v;$$('#seg button').forEach(b=>b.classList.toggle('on',b.dataset.v===v));if(!quiet)save()}
 $$('#seg button').forEach(b=>b.onclick=()=>theme(b.dataset.v));
-try{const c=JSON.parse(localStorage.getItem('gp')||'null');if(c){S.snd=c.snd;S.vib=c.vib;S.nx=c.nx;S.fill=c.fill!==false;pl.classList.toggle('fill',S.fill);$('#sFill').checked=S.fill;$('#sSnd').checked=S.snd;$('#sVib').checked=S.vib;$('#sNx').checked=S.nx;$('#sG').value=c.g;$('#sB').value=c.b;S.dep=c.dep!==false;S.tilt=c.tilt!==false;S.dz=c.dz==null?60:+c.dz;S.ta=c.ta==null?60:+c.ta;S.par=c.par==null?50:+c.par;$('#sDep').checked=S.dep;$('#sTilt').checked=S.tilt;$('#sDz').value=S.dz;$('#sTa').value=S.ta;$('#sPar').value=S.par;theme(c.t||'auto')}}catch(e){}
+/* Restored values are validated one field at a time: a truncated or hand-edited payload must not cost
+   the fields that are still good, and every number is clamped into its own slider's range so a bogus
+   value can never reach a custom property or a control. */
+const num=(v,el)=>{const lo=+el.min,hi=+el.max;let n=parseFloat(v);if(!isFinite(n))n=parseFloat(el.defaultValue);if(!isFinite(n))n=lo;return Math.min(hi,Math.max(lo,Math.round(n)))};
+const bool=(v,d)=>v===undefined||v===null?d:v!==false;
+function restore(){let c=null,bad=false;const raw=store.get('gp');
+ if(raw){try{c=JSON.parse(raw)}catch(e){bad=true}
+  if(c!==null&&(typeof c!=='object'||Array.isArray(c))){c=null;bad=true}
+  if(c&&c.t!==undefined&&c.t!=='auto'&&c.t!=='light'&&c.t!=='dark')bad=true}
+ c=c||{};
+ S.snd=bool(c.snd,true);S.vib=bool(c.vib,true);S.nx=bool(c.nx,true);S.fill=bool(c.fill,true);
+ S.dep=bool(c.dep,true);S.tilt=bool(c.tilt,true);
+ $('#sSnd').checked=S.snd;$('#sVib').checked=S.vib;$('#sNx').checked=S.nx;$('#sFill').checked=S.fill;
+ pl.classList.toggle('fill',S.fill);
+ $('#sG').value=num(c.g,$('#sG'));$('#sB').value=num(c.b,$('#sB'));
+ $('#sDz').value=num(c.dz,$('#sDz'));$('#sTa').value=num(c.ta,$('#sTa'));$('#sPar').value=num(c.par,$('#sPar'));
+ S.dz=+$('#sDz').value;S.ta=+$('#sTa').value;S.par=+$('#sPar').value;
+ $('#sDep').checked=S.dep;$('#sTilt').checked=S.tilt;
+ theme(c.t==='light'||c.t==='dark'?c.t:'auto',true);
+ /* a damaged payload is not recorded as saved, so the next change rewrites it in healed form */
+ lastSaved=bad?null:snapshot()}
+/* runs before the splash finishes, so the first frame the user sees already has the right settings */
+restore();
 /* Some engines only reveal the real duration after a seek far past the end. That probe throws on engines
    that clamp instead, so it is guarded, the listener settles exactly once, and a 2 s backstop fires it
    if no timeupdate ever arrives. */
@@ -374,8 +411,10 @@ function dropPendingUndo(){const d=lastDel;lastDel=null;if(d)revokeURL(d.it)}
 function delItem(it,c){if(!c||!c.isConnected)return;c.classList.remove('bo');c.classList.add('rm');tick(520,.14,.15);setTimeout(()=>{const idx=S.items.indexOf(it);if(idx<0)return;S.items.splice(idx,1);S.cur=-1;render();dropPendingUndo();lastDel={it,idx};toast('Deleted “'+it.name+'”','Undo',()=>{const d=lastDel;lastDel=null;if(!d||!d.it.url)return;S.items.splice(Math.min(d.idx,S.items.length),0,d.it);render();tick(1100)})},520)}
 /* release every blob URL when the page is torn down */
 function revokeAll(){S.items.forEach(revokeURL);dropPendingUndo()}
-addEventListener('pagehide',e=>{if(!e.persisted)revokeAll()});
-addEventListener('beforeunload',revokeAll);
+/* a pending debounced write is committed before the page goes away or is backgrounded */
+addEventListener('pagehide',e=>{saveFlush();if(!e.persisted)revokeAll()});
+addEventListener('beforeunload',()=>{saveFlush();revokeAll()});
+addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')saveFlush()},{passive:true});
 /* ===== depth & 4D engine ===== */
 let gx=0,gy=0,gOn=false,gT=0,lastC=null;
 function setDz(){R.style.setProperty('--dzk',(S.dz/100*1.2+.12).toFixed(2))}
