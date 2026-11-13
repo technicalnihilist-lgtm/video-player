@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.0.9
+
+Maintenance release: the picture is unchanged, but the library no longer rebuilds itself from scratch every time you add or delete a video.
+
+- **Adding or deleting one video no longer rebuilds the whole library.** The grid used to be emptied and every card recreated on every change, so a library of 100 videos paid 100 cards of work for one file. Each card is now tied to its video and reused: only the card that actually changed is created, patched or removed. On a 100-video library a re-render went from **96 ms to 0.1 ms**, and adding one video now creates **2 elements instead of 102**; the other 100 cards are left untouched.
+- **Cards that are already on screen no longer re-play their entrance animation** when another video is added or removed. A newly added card still enters with exactly the same delay it had before.
+- **Fixed:** a card that was mid-way through its delete animation used to be dropped instantly if the library re-rendered underneath it, so the card vanished without its animation. It now finishes its animation and then leaves.
+- **Fixed:** a delete whose video had already left the list could leave a half-removed card sitting in the grid, and a second tap on a card that was already being deleted could queue a second removal. Both cases are guarded now: the card always leaves the grid, once.
+- **The tilt/parallax state survives a change.** Because cards are reused, a card that is being tilted keeps its tilt when you add or delete a different video; only references to cards that really left the grid are dropped.
+- **The playback clock does less work per frame.** The two time labels were looked up by selector on every animation frame; they are cached now, so a playing video costs one style write and at most one text write per frame.
+- **The empty state is toggled without touching the grid**, and a render where nothing changed now does literally nothing instead of rebuilding 100 cards.
+- **Bulk adds go in as one insertion.** Twenty files chosen at once are placed in the grid in a single DOM insertion rather than one per file, so the main thread yields between files instead of reflowing the grid twenty times.
+- **Nothing visible changed** — the stylesheet and the page markup are byte-identical to 1.0.8; only the inline script differs. The one thing you could notice is deliberate and is what this pass was for: cards already on screen stay put instead of animating again.
+- Not measurable here: the paint and compositor cost of the glass blur cannot be timed in a headless run. The JavaScript-side cost that used to force every blurred layer to be re-rasterised on each change is gone (one card repainted instead of all of them), but the on-device blur cost itself was left alone — trimming blur layers by device memory is scheduled for the CSS performance pass.
+
 ## 1.0.8
 
 Maintenance release: the picture is unchanged, but your settings are now saved safely and restored exactly.

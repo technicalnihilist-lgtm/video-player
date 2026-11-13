@@ -244,7 +244,55 @@ function meta(it){return new Promise(r=>{const v=document.createElement('video')
  /* no decoded frame (unsupported codec, audio-only file) means no thumbnail, not a broken one */
  if(vw>0&&vh>0){const c=document.createElement('canvas');c.width=320;c.height=Math.round(320*vh/vw)||200;const x=c.getContext('2d');if(x)x.drawImage(v,0,0,c.width,c.height);it.th=c.toDataURL('image/jpeg',.7)}}catch(e){}done()};
  v.onerror=done})}
-function render(){const g=$('#grid');g.innerHTML='';tiltReset();$('#empty').hidden=S.items.length>0;S.items.forEach((it,i)=>{const c=document.createElement('div');c.className='card gl b';c.style.setProperty('--i',i);c.setAttribute('role','button');c.innerHTML='<div class="th"><span class="du"></span><i class="pp">'+svg('play')+'</i></div><button class="del b" aria-label="Delete video">'+svg('trash')+'</button><b></b><small></small>';if(it.th)c.querySelector('.th').style.backgroundImage='url('+it.th+')';c.querySelector('.du').textContent=fmt(it.dur);c.querySelector('b').textContent=it.name;c.querySelector('small').textContent=(it.size/1048576).toFixed(1)+' MB';c.onclick=()=>{c.classList.remove('bo');void c.offsetWidth;c.classList.add('bo');setTimeout(()=>openP(S.items.indexOf(it)),280)};c.querySelector('.del').onclick=e=>{e.stopPropagation();delItem(it,c)};g.appendChild(c)})}
+/* ===== library rendering =====
+   A card is keyed by the item it stands for and reused across renders. Adding or deleting one video
+   used to empty #grid and rebuild every card, which replayed every entry animation and made the
+   compositor re-rasterise every glass layer; now only cards whose data changed are created, patched
+   or removed, and a card that did not change is not touched at all. */
+const gridEl=$('#grid'),emptyEl=$('#empty'),cardOf=new Map();
+function makeCard(it,i){
+ const c=document.createElement('div');c.className='card gl b';c.setAttribute('role','button');
+ /* the entry delay stays index-based, so a new card animates in exactly as late as it used to */
+ c.style.setProperty('--i',i);
+ c.innerHTML='<div class="th"><span class="du"></span><i class="pp">'+svg('play')+'</i></div><button class="del b" aria-label="Delete video">'+svg('trash')+'</button><b></b><small></small>';
+ const rec={node:c,th:c.querySelector('.th'),du:c.querySelector('.du'),b:c.querySelector('b'),sm:c.querySelector('small'),thSrc:'',duT:'',bT:'',smT:''};
+ c.onclick=()=>{c.classList.remove('bo');void c.offsetWidth;c.classList.add('bo');setTimeout(()=>openP(S.items.indexOf(it)),280)};
+ c.querySelector('.del').onclick=e=>{e.stopPropagation();delItem(it,c)};
+ return rec}
+/* a field is written only when its value really changed, so a re-render allocates no text nodes and
+   does no style work on the cards that stayed the same */
+function patchCard(rec,it){
+ const du=fmt(it.dur),mb=(it.size/1048576).toFixed(1)+' MB',th=it.th?'url('+it.th+')':'';
+ if(rec.duT!==du){rec.du.textContent=du;rec.duT=du}
+ if(rec.bT!==it.name){rec.b.textContent=it.name;rec.bT=it.name}
+ if(rec.smT!==mb){rec.sm.textContent=mb;rec.smT=mb}
+ if(rec.thSrc!==th){rec.th.style.backgroundImage=th;rec.thSrc=th}}
+function render(){
+ const n=S.items.length,hideEmpty=n>0;
+ /* the empty state is a sibling of the grid, so showing or hiding it never touches a card */
+ if(emptyEl.hidden!==hideEmpty)emptyEl.hidden=hideEmpty;
+ const nodes=new Array(n);
+ for(let i=0;i<n;i++){const it=S.items[i];let rec=cardOf.get(it);
+  if(!rec){rec=makeCard(it,i);cardOf.set(it,rec)}
+  patchCard(rec,it);nodes[i]=rec.node}
+ /* place the cards in order and touch the DOM only where the sequence actually differs; a run of
+    new cards goes in as one fragment, so a bulk add costs one insertion instead of one per file */
+ let cur=gridEl.firstChild,i=0,moved=false;
+ while(i<n){const nd=nodes[i];
+  if(nd===cur){cur=cur.nextSibling;i++;continue}
+  moved=true;
+  if(!nd.isConnected){const frag=document.createDocumentFragment();
+   while(i<n&&!nodes[i].isConnected){frag.appendChild(nodes[i]);i++}
+   gridEl.insertBefore(frag,cur||null);continue}
+  gridEl.insertBefore(nd,cur||null);i++}
+ while(cur){const nx=cur.nextSibling;cur.remove();cur=nx;moved=true}
+ if(moved)rectDirty=true;
+ if(cardOf.size>n){const keep=new Set(S.items);cardOf.forEach((rec,it)=>{if(!keep.has(it))cardOf.delete(it)})}
+ /* tilt and parallax state lives on the card nodes, which now survive a render; only a reference to
+    a card that has left the grid is dropped */
+ if(lastC&&!lastC.isConnected)lastC=null;
+ if(rectC&&!rectC.isConnected){rectC=null;rectBox=null;rectDirty=true}
+ if(pmC&&!pmC.isConnected)pmC=null}
 /* player */
 const V=$('#v'),pl=$('#pl');let hideT,wl;
 const setPP=()=>$('#pp').innerHTML=svg(V.paused?'play':'pause');setPP();
@@ -308,10 +356,13 @@ V.addEventListener('loadedmetadata',chk);V.addEventListener('play',()=>{if(isBad
 /* timeupdate arrives 4-10x a second and each event used to write four DOM values. The writes are
    now coalesced into one animation frame, and a label is only touched when its text changed. */
 let tuFrame=0,lastCu='',lastDd='';
-function paintTime(){tuFrame=0;const k=$('#sk'),d=dur(V),cu=fmt(V.currentTime),dd=fmt(d);
+/* the clock runs once per frame, so its two label nodes are cached instead of being looked up by
+   selector on every frame */
+const elCu=$('#cu'),elDd=$('#dd');
+function paintTime(){tuFrame=0;const k=sk,d=dur(V),cu=fmt(V.currentTime),dd=fmt(d);
  if(!k.dragging){k.value=d?V.currentTime/d*10000:0;rng(k)}
- if(cu!==lastCu){$('#cu').textContent=cu;lastCu=cu}
- if(dd!==lastDd){$('#dd').textContent=dd;lastDd=dd}}
+ if(cu!==lastCu){elCu.textContent=cu;lastCu=cu}
+ if(dd!==lastDd){elDd.textContent=dd;lastDd=dd}}
 function timePaint(){if(!tuFrame)tuFrame=requestAnimationFrame(paintTime)}
 function timePaintStop(){if(tuFrame){cancelAnimationFrame(tuFrame);tuFrame=0}lastCu=lastDd=''}
 V.ontimeupdate=timePaint;
@@ -408,7 +459,15 @@ let lastDel;
 /* A deleted video's blob URL is kept alive only while its undo toast is on screen, then revoked. */
 function revokeURL(it){if(!it||!it.url)return;const u=it.url;it.url='';try{URL.revokeObjectURL(u)}catch(e){}}
 function dropPendingUndo(){const d=lastDel;lastDel=null;if(d)revokeURL(d.it)}
-function delItem(it,c){if(!c||!c.isConnected)return;c.classList.remove('bo');c.classList.add('rm');tick(520,.14,.15);setTimeout(()=>{const idx=S.items.indexOf(it);if(idx<0)return;S.items.splice(idx,1);S.cur=-1;render();dropPendingUndo();lastDel={it,idx};toast('Deleted “'+it.name+'”','Undo',()=>{const d=lastDel;lastDel=null;if(!d||!d.it.url)return;S.items.splice(Math.min(d.idx,S.items.length),0,d.it);render();tick(1100)})},520)}
+function delItem(it,c){if(!c||!c.isConnected||c.classList.contains('rm'))return;
+ c.classList.remove('bo');c.classList.add('rm');tick(520,.14,.15);
+ setTimeout(()=>{
+  /* the card leaves the grid even when the item is no longer in the list, so a repeated, cancelled
+     or raced delete can never leave a half-removed node sitting in the grid */
+  const rec=cardOf.get(it);if(rec&&rec.node.isConnected)rec.node.remove();
+  const idx=S.items.indexOf(it);if(idx<0){if(rec)cardOf.delete(it);return}
+  S.items.splice(idx,1);S.cur=-1;render();dropPendingUndo();lastDel={it,idx};
+  toast('Deleted “'+it.name+'”','Undo',()=>{const d=lastDel;lastDel=null;if(!d||!d.it.url)return;S.items.splice(Math.min(d.idx,S.items.length),0,d.it);render();tick(1100)})},520)}
 /* release every blob URL when the page is torn down */
 function revokeAll(){S.items.forEach(revokeURL);dropPendingUndo()}
 /* a pending debounced write is committed before the page goes away or is backgrounded */
@@ -420,8 +479,8 @@ let gx=0,gy=0,gOn=false,gT=0,lastC=null;
 function setDz(){R.style.setProperty('--dzk',(S.dz/100*1.2+.12).toFixed(2))}
 function setTiltK(){R.style.setProperty('--tiltk',(S.ta/60).toFixed(2))}
 function setPar(){R.style.setProperty('--park',(S.par/50).toFixed(2))}
-/* every card is replaced on a re-render, so the cached node and box are dropped with them */
-function tiltReset(){lastC=null;rectC=null;rectBox=null;rectDirty=true;pmC=null}
+/* Cards are no longer replaced on a re-render, so the cached node and box stay valid; render() only
+   drops a reference to a card that actually left the grid. */
 function clearTilt(c){c=c||lastC;if(!c)return;['--prx','--pry','--px','--py','--mx','--my'].forEach(v=>c.style.removeProperty(v))}
 /* A card's box is measured once, when the pointer first enters it or after a scroll/resize, instead of
    on every pointermove: getBoundingClientRect() in a move handler forces a layout per event. */
