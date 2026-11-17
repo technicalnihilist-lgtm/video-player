@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.0.10
+
+Maintenance release: the picture is unchanged, but the player now lets go of the phone's resources the moment it stops using them.
+
+- **The screen no longer stays awake for a paused video.** The keep-screen-on lock used to be taken when a video opened and held until it closed, so pausing and walking away still kept the display on. It is now taken when playback starts and handed straight back when it pauses or ends, and taken again when you press play.
+- **The app stops working while it is in the background.** When the app is backgrounded, playback is paused there (which flushes the decoder instead of leaving it decoding into nothing), the keep-screen-on lock is released, the tap-sound audio stream is suspended and the motion (gyro) sensor listener is removed. All of it comes back when you return.
+- **Returning to the app resumes exactly where you were** — the same video, the same position, playing again — instead of sometimes coming back to a stuck paused player.
+- **An interruption from another app is respected.** If a call or another player takes the audio, the video pauses, the controls come back up and the keep-screen-on lock is released. The app does not fight for audio and does not silently restart playback when you come back; you press play when you are ready.
+- **Tap sounds stop holding an audio stream open.** The little tap-sound audio context used to stay running for the whole session after the first tap; it is now suspended a few seconds after the last sound, and immediately when the app is backgrounded.
+- **Rotation checks do no work in the library.** The orientation check used to read layout and update the rotate-banner state on every resize and rotation even with the player closed. It now runs only while a video is open.
+- **Faded-out player controls cost nothing to keep on screen.** Once the controls have finished fading out, their glass backdrop is dropped; it is restored before they fade back in, so they look exactly the same on the way in and out.
+- **Fixed:** closing the player in the middle of a seek-bar drag left the seek bar in its dragging state, so the next video's bar never moved and the clock looked frozen. A close now clears that state, along with every pending player timer and any half-finished hold-to-2×.
+- **Fixed:** a refused `AudioContext.resume()` and an engine without `exitFullscreen()`'s promise could throw out of a handler during teardown. Both are contained now.
+- **Nothing visible changed** — the page markup is byte-identical to 1.0.9. The stylesheet differs by exactly one rule that only applies while the controls are fully faded out, so no colour, spacing, layout, blur, shadow or timing on screen has moved.
+- **Skipped:** dropping the video source itself when the app is backgrounded (rather than only pausing) was left out. Re-attaching it on return shows a black frame and a re-buffer before playback continues, which is a visible change — it needs visual sign-off.
+
 ## 1.0.9
 
 Maintenance release: the picture is unchanged, but the library no longer rebuilds itself from scratch every time you add or delete a video.

@@ -101,6 +101,10 @@ input[type=range]:active::-webkit-slider-thumb{transform:scale(1.4)}
 #tz{position:absolute;inset:0;z-index:1;touch-action:manipulation}
 .cc{position:absolute;z-index:2;transition:transform .6s var(--sp),opacity .3s}
 #pl.hide .cc{opacity:0}#pl.hide .cc,#pl.hide .cc *{pointer-events:none}
+/* faded-out controls still keep their glass panels in the compositor; the backdrop cost is dropped
+   only once the fade-out has finished (the class is never on during a transition), so the controls
+   look exactly the same on the way in and out */
+#pl.hide.idle .cc{-webkit-backdrop-filter:none;backdrop-filter:none}
 #pl.hide #top{transform:translateY(-30px) scale(.9)}
 #pl.hide #bot{transform:translateY(40px) scale(.92)}
 #pl.hide #mid{transform:translate(-50%,-50%) scale(.7)}
@@ -205,8 +209,17 @@ const svg=n=>'<svg viewBox="0 0 24 24">'+IC[n]+'</svg>';
 function icons(r=document){r.querySelectorAll('[data-ic]').forEach(e=>e.innerHTML=svg(e.dataset.ic))}
 icons();
 const S={snd:true,vib:true,nx:true,fill:true,dep:true,tilt:true,dz:60,ta:60,par:50,items:[],cur:-1};
-let AC;
-function tick(f=880,d=.07,v=.13){if(S.vib&&navigator.vibrate)try{navigator.vibrate(8)}catch(e){}if(!S.snd)return;try{AC=AC||new(window.AudioContext||window.webkitAudioContext)();if(AC.state==='suspended')AC.resume();const o=AC.createOscillator(),g=AC.createGain(),t=AC.currentTime;o.type='sine';o.frequency.setValueAtTime(f,t);o.frequency.exponentialRampToValueAtTime(f*.62,t+d);g.gain.setValueAtTime(v,t);g.gain.exponentialRampToValueAtTime(.001,t+d);o.connect(g);g.connect(AC.destination);o.start(t);o.stop(t+d+.01)}catch(e){}}
+let AC,acT;
+/* The tap-sound context keeps an audio stream (and the audio hardware) awake after the last tap. It
+   is suspended a few seconds after the last sound, and immediately when the page is hidden; the next
+   tap resumes it, so an idle app holds no audio stream open. */
+function acIdle(now){clearTimeout(acT);if(!AC)return;
+ const s=()=>{const a=AC;if(!a||a.state!=='running')return;try{const p=a.suspend();if(p&&p.catch)p.catch(()=>{})}catch(e){}};
+ if(now)s();else acT=setTimeout(s,4000)}
+function tick(f=880,d=.07,v=.13){if(S.vib&&navigator.vibrate)try{navigator.vibrate(8)}catch(e){}if(!S.snd)return;try{AC=AC||new(window.AudioContext||window.webkitAudioContext)();
+ /* resume() returns a promise; a refused resume must not surface as an unhandled rejection */
+ if(AC.state==='suspended'){const r=AC.resume();if(r&&r.catch)r.catch(()=>{})}
+ const o=AC.createOscillator(),g=AC.createGain(),t=AC.currentTime;o.type='sine';o.frequency.setValueAtTime(f,t);o.frequency.exponentialRampToValueAtTime(f*.62,t+d);g.gain.setValueAtTime(v,t);g.gain.exponentialRampToValueAtTime(.001,t+d);o.connect(g);g.connect(AC.destination);o.start(t);o.stop(t+d+.01);acIdle()}catch(e){}}
 /* capture-phase tap sound: never cancels the gesture, so it is declared passive */
 addEventListener('pointerdown',e=>{const t=e.target.closest('button,.card,.tab,.sw,.o,#scrim');if(t)tick(t.classList.contains('card')||t.id==='pp'?1040:880)},{capture:true,passive:true});
 let tt,tc;
@@ -294,13 +307,21 @@ function render(){
  if(rectC&&!rectC.isConnected){rectC=null;rectBox=null;rectDirty=true}
  if(pmC&&!pmC.isConnected)pmC=null}
 /* player */
-const V=$('#v'),pl=$('#pl');let hideT,wl;
+const V=$('#v'),pl=$('#pl');let hideT,wl,wlPend=false,idleT,resumeOnShow=false;
 const setPP=()=>$('#pp').innerHTML=svg(V.paused?'play':'pause');setPP();
-function showC(){pl.classList.remove('hide');clearTimeout(hideT);if(!V.paused)hideT=setTimeout(()=>pl.classList.add('hide'),3200)}
+/* Controls that have faded out keep a glass panel (backdrop blur, border, shadow) alive in the
+   compositor for nothing. The `idle` class drops the backdrop cost, but it is added only after the
+   fade has finished and removed before the fade back in, so nothing on screen ever changes. */
+function hideC(){pl.classList.add('hide');clearTimeout(idleT);idleT=setTimeout(()=>{if(pl.classList.contains('hide'))pl.classList.add('idle')},700)}
+function showC(){clearTimeout(hideT);clearTimeout(idleT);pl.classList.remove('idle');pl.classList.remove('hide');if(!V.paused)hideT=setTimeout(hideC,3200)}
+/* The wake lock follows playback: it is taken when a video starts, handed back when it pauses, and
+   never requested twice at once. A hidden page cannot hold one, so it is not asked for there. */
 function acquireWL(){try{if(!navigator.wakeLock||!navigator.wakeLock.request)return;
- navigator.wakeLock.request('screen').then(w=>{if(!pl.classList.contains('on')){try{w.release()}catch(e){}return}
-  wl=w;try{w.addEventListener('release',()=>{if(wl===w)wl=null})}catch(e){}}).catch(()=>{})}catch(e){}}
-function releaseWL(){const w=wl;wl=null;if(!w)return;try{w.release&&w.release()}catch(e){}}
+ if(wl||wlPend||!pl.classList.contains('on')||document.visibilityState==='hidden')return;
+ wlPend=true;
+ navigator.wakeLock.request('screen').then(w=>{wlPend=false;if(!pl.classList.contains('on')){try{w.release()}catch(e){}return}
+  wl=w;try{w.addEventListener('release',()=>{if(wl===w)wl=null})}catch(e){}}).catch(()=>{wlPend=false})}catch(e){wlPend=false}}
+function releaseWL(){const w=wl;wl=null;wlPend=false;if(!w)return;try{w.release&&w.release()}catch(e){}}
 function openP(i){const it=S.items[i];if(!it||!it.url)return;S.cur=i;
  clearRipples();
  V.src=it.url;V.playbackRate=1;$('#sp').textContent='1×';
@@ -327,7 +348,14 @@ function closeP(){if(!pl.classList.contains('on'))return;
     the pending timer is cancelled, the hold state is dropped and the rate goes back to normal */
  clearTimeout(hold);held=false;
  try{V.playbackRate=1}catch(e){}delete V.dataset.r;$('#x2').classList.remove('on');
- if(document.fullscreenElement)document.exitFullscreen().catch(()=>{})}
+ /* every timer and half-finished gesture the player owns is dropped here, so closing in the middle
+    of a tap, a scrub or a fade can never leave the next video with a frozen seek bar or hidden
+    controls; the library is left exactly as it was */
+ clearTimeout(hideT);clearTimeout(idleT);clearTimeout(st);resumeOnShow=false;
+ pl.classList.remove('hide','idle');
+ sk.dragging=false;seekPaused=false;
+ if(S.cur>=0&&S.items[S.cur]!==cur)S.cur=-1;
+ if(document.fullscreenElement)try{document.exitFullscreen().catch(()=>{})}catch(e){}}
 function sheet(on){$('#sheet').classList.toggle('on',on);$('#scrim').classList.toggle('on',on)}
 /* Android-style system back */
 addEventListener('popstate',()=>{if($('#sheet').classList.contains('on'))sheet(false);else closeP()});
@@ -336,7 +364,11 @@ const skip=s=>{const d=dur(V),c=isFinite(V.currentTime)?V.currentTime:0;
  try{V.currentTime=d?Math.max(0,Math.min(d,c+s)):Math.max(0,c+s)}catch(e){}};
 const tp=()=>V.paused?V.play():V.pause();
 $('#pp').onclick=()=>{tp();showC()};$('#r10').onclick=()=>{skip(-10);showC()};$('#f10').onclick=()=>{skip(10);showC()};
-V.onplay=V.onpause=()=>{setPP();showC()};
+/* play and pause are no longer one handler: the wake lock is held only while frames are being
+   decoded, and a pause that this app did not ask for is treated as an interruption */
+V.onplay=()=>{setPP();showC();acquireWL()};
+V.onpause=()=>{setPP();showC();releaseWL();
+ if(document.visibilityState!=='hidden')resumeOnShow=false};
 /* registered exactly once — openP used to re-register them for every video */
 function initMS(){if(!('mediaSession' in navigator))return;try{const ms=navigator.mediaSession;
  ms.setActionHandler('play',()=>{V.play().catch(()=>{})});
@@ -347,8 +379,28 @@ initMS();
 /* A decoder error (codec the platform cannot handle, file no longer readable) must hand the wake lock
    back, leave the controls on screen and say what happened instead of holding a black frame. */
 V.addEventListener('error',()=>{if(!pl.classList.contains('on'))return;releaseWL();showC();toast('Can’t play this video')});
+/* ===== background & interruptions =====
+   With the app in the background the page cannot hold a wake lock and the decoder has nothing useful
+   to do, so playback is paused there (which flushes the decoder) and the position is kept. Coming back
+   resumes only what this app paused itself. A pause caused by something else — a call, another player
+   taking audio focus — arrives as a plain pause event while the page is visible and is left alone, so
+   the app never fights the platform for audio. The gyro is stopped while hidden as well. */
+function onHide(){
+ if(pl.classList.contains('on')&&!V.paused){resumeOnShow=true;try{V.pause()}catch(e){}}
+ releaseWL();acIdle(true);stopGyro()}
+function onShow(){
+ if(pl.classList.contains('on')&&resumeOnShow){resumeOnShow=false;try{V.play().catch(()=>{})}catch(e){}showC();acquireWL()}
+ if(S.tilt)startGyro()}
+document.addEventListener('visibilitychange',()=>{document.visibilityState==='hidden'?onHide():onShow()});
 let wasP=false;const isBad=()=>V.videoWidth>0&&V.videoHeight>V.videoWidth&&innerWidth>innerHeight&&pl.classList.contains('on');
-function chk(){rectDirty=true;V.classList.toggle('por',V.videoWidth>0&&V.videoHeight>V.videoWidth);const bad=isBad();$('#rot').classList.toggle('on',bad);if(bad){V.pause();wasP=true;pl.classList.remove('hide')}else if(wasP&&pl.classList.contains('on')){wasP=false;V.play().catch(()=>{})}}
+/* The orientation check only means anything while the player is open: with the library on screen it
+   used to read layout and write two classes on every resize and rotation for nothing. The tilt cache
+   is still invalidated, which is all the library needs from a resize. */
+function chk(){rectDirty=true;if(!pl.classList.contains('on'))return;
+ V.classList.toggle('por',V.videoWidth>0&&V.videoHeight>V.videoWidth);
+ const bad=isBad();$('#rot').classList.toggle('on',bad);
+ if(bad){V.pause();wasP=true;showC()}
+ else if(wasP){wasP=false;V.play().catch(()=>{})}}
 /* resize and orientation both fire in bursts; the check reads layout, so it runs at most once a frame */
 let chkFrame=0;
 function chkSoon(){if(chkFrame)return;chkFrame=requestAnimationFrame(()=>{chkFrame=0;chk()})}
@@ -402,7 +454,7 @@ tz.onpointerleave=rel;tz.onpointercancel=rel;
    320 ms, so a slightly slow double tap toggled the controls first and then seeked. The single-tap
    delay is now longer than the double-tap window, so a double tap is always recognised on its own. */
 const DBL=350,SINGLE=380;
-tz.onpointerup=e=>{rel();if(held)return;const now=Date.now(),w=innerWidth,x=e.clientX;if(now-lt<DBL){clearTimeout(st);lt=0;if(x<w*.35){skip(-10);ripple(e.clientX,e.clientY,'−10')}else if(x>w*.65){skip(10);ripple(e.clientX,e.clientY,'+10')}else tp();showC()}else{lt=now;st=setTimeout(()=>{if(!pl.classList.contains('on'))return;pl.classList.contains('hide')?showC():pl.classList.add('hide')},SINGLE)}};
+tz.onpointerup=e=>{rel();if(held)return;const now=Date.now(),w=innerWidth,x=e.clientX;if(now-lt<DBL){clearTimeout(st);lt=0;if(x<w*.35){skip(-10);ripple(e.clientX,e.clientY,'−10')}else if(x>w*.65){skip(10);ripple(e.clientX,e.clientY,'+10')}else tp();showC()}else{lt=now;st=setTimeout(()=>{if(!pl.classList.contains('on'))return;pl.classList.contains('hide')?showC():hideC()},SINGLE)}};
 addEventListener('keydown',e=>{if(!pl.classList.contains('on'))return;if(e.key===' '){e.preventDefault();tp()}if(e.key==='ArrowRight')skip(10);if(e.key==='ArrowLeft')skip(-10);if(e.key==='Escape')history.back();showC()});
 /* settings */
 const R=document.documentElement;
